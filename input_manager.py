@@ -8,9 +8,9 @@ preset_i = 0
 input_buffer = ""
 
 # Settings
-target_fps = 15
-vsync_enabled = True
-cell_size = 5
+target_fps = 0
+vsync_enabled = False
+cell_size = 3
 random_density = 30
 _mode1 = 0
 _mode2 = 0
@@ -128,9 +128,9 @@ def print_input():
         elif inp == "r p":
             print(f"enter:    [number] - select,  [n] - next,  [p] - prev\n\n  =>  Rule:  Preset:    {input_buffer}", end="")
         elif inp == "s":
-            print("enter:    [f] - FPS,  [z] - cell size,  [d] - density,  [u] - ui hide/show,  [r] - render mode(не работает)\n\n  =>  Settings:    \n", end="")
+            print("enter:    [f] - FPS,  [z] - cell size,  [d] - density,  [u] - ui hide/show,  [r] - render mode\n\n  =>  Settings:    \n", end="")
         elif inp == "s r":
-            print("enter:    [a] - set render mode for active,  [n] - set render mode for non active,  \n\n  =>  Settings:  Render Mode:    \n", end="")
+            print("enter:    [a] - set render mode for active,  [n] - set render mode for non active(не работает),  \n\n  =>  Settings:  Render Mode:    \n", end="")
         elif inp == "s r a":
             print("enter:    [number]  -   select Render Mode,  \n\n  =>  Settings:  Render Mode:  Active:    \n", end="")
         elif inp == "s r n":
@@ -388,7 +388,7 @@ def on_key_press(symbol, modifiers):
                     return False
 
             elif inp == "s r a":
-                _mode1 = max(min(num, 4), 0)
+                _mode1 = max(min(num, 2), 0)
                 inp = "s r a"
                 print_help()
                 print_input()

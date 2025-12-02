@@ -35,7 +35,7 @@ def init_grid(width, height, mode1=0, mode2=0):
 def update_grid_ultra_fast(is_update_rule, mode1=0, mode2=0):
     global grid, generation, neighbors, rule_s, rule_b, grid_infor, prev_mode1
 
-    print(f"DEBUG: mode1={mode1}, prev_mode1={prev_mode1}, grid_infor exists={grid_infor is not None}")
+    #print(f"DEBUG: mode1={mode1}, prev_mode1={prev_mode1}, grid_infor exists={grid_infor is not None}")
 
     if is_update_rule:
         from config import get_rules
@@ -59,22 +59,43 @@ def update_grid_ultra_fast(is_update_rule, mode1=0, mode2=0):
     born_cells = (grid == 0) & (new_grid == 1)
     alive_cells = new_grid == 1
 
-    print(f"DEBUG: alive_cells count={np.sum(alive_cells)}")
+    #print(f"DEBUG: alive_cells count={np.sum(alive_cells)}")
 
     if (mode1 != 0 or mode2 != 0) and grid_infor is None:
         grid_infor = np.zeros((3, grid.shape[0], grid.shape[1]), dtype=np.uint8)
-        print("DEBUG: Created grid_infor")
+        #print("DEBUG: Created grid_infor")
 
     if mode1 != 0 and grid_infor is not None:
-        print(f"DEBUG: Transition check: {prev_mode1} -> {mode1}, condition: {prev_mode1 == 0 and mode1 != 0}")
+        #print(f"DEBUG: Transition check: {prev_mode1} -> {mode1}, condition: {prev_mode1 == 0 and mode1 != 0}")
         
         if prev_mode1 == 0 and mode1 != 0 and np.any(alive_cells):
-            print("DEBUG: Painting alive cells white")
+            #print("DEBUG: Painting alive cells white")
             grid_infor[0, alive_cells] = 255
             grid_infor[1, alive_cells] = 255  
             grid_infor[2, alive_cells] = 255
 
-        # ... остальной код без изменений
+    if mode1 != 0:
+        if mode1 == 1:
+            #b
+            grid_infor[0, (grid == 0) & (new_grid == 1)] = 255
+            
+            #s
+            grid_infor[:, (grid == 1) & (new_grid == 1)] = 200
+            
+        if mode1 == 2:
+            #s
+            grid_infor[:, (grid_infor[0, :] == 0) & (grid == 1) & (new_grid == 1)] = 0
+            grid_infor[:, (grid_infor[1, :] < 150)] = np.add(grid_infor[:, (grid_infor[1, :] < 150)], 5)
+            grid_infor[:, (grid_infor[1, :] >= 150)] = np.add(np.clip(grid_infor[:, (grid_infor[1, :] >= 150)], 0, 254), 1)
+            
+            #b
+            grid_infor[0, (grid == 0) & (new_grid == 1)] = 0
+            grid_infor[1, (grid == 0) & (new_grid == 1)] = 50
+            grid_infor[2, (grid == 0) & (new_grid == 1)] = 255
+            grid_infor[0, (grid == 1) & (new_grid == 1)] = 255
+            
+        if mode2 == 0:
+            grid_infor[:, new_grid==0] = 0
 
     prev_mode1 = mode1
     grid = new_grid
@@ -113,9 +134,10 @@ def resize_grid_fast(new_width, new_height, mode1=0, mode2=0):
     prev_mode1 = mode1
 
 def clear_grid():
-    global grid, generation
+    global grid, generation, grid_infor
     if grid is not None:
         grid.fill(0)
+        grid_infor.fill(0)
     generation = 0
 
 def random_grid(density=30):

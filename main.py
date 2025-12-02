@@ -22,7 +22,7 @@ grid_width = INITIAL_WIDTH // cell_size
 grid_height = INITIAL_HEIGHT // cell_size
 single_step = False
 _ui = True
-render_mode1 = 0
+render_mode1 = 1
 render_mode2 = 0
 
 def create_grid():
