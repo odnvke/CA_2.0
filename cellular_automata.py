@@ -1,6 +1,7 @@
-# cellular_automata.py (оптимизированная версия)
+# cellular_automata.py
 import numpy as np
 import colorsys
+from app_state import AppState
 
 # Глобальные переменные КА
 neighbors = None
@@ -29,13 +30,13 @@ def init_grid(width, height, mode1=0, mode2=0):
     grid = np.zeros((width, height), dtype=np.uint8)
     if mode1 != 0 or mode2 != 0:
         grid_infor = np.zeros((3, width, height), dtype=np.uint8)
+    else:
+        grid_infor = None
     generation = 0
     prev_mode1 = mode1
 
 def update_grid_ultra_fast(is_update_rule, mode1=0, mode2=0):
     global grid, generation, neighbors, rule_s, rule_b, grid_infor, prev_mode1
-
-    #print(f"DEBUG: mode1={mode1}, prev_mode1={prev_mode1}, grid_infor exists={grid_infor is not None}")
 
     if is_update_rule:
         from config import get_rules
@@ -59,22 +60,16 @@ def update_grid_ultra_fast(is_update_rule, mode1=0, mode2=0):
     born_cells = (grid == 0) & (new_grid == 1)
     alive_cells = new_grid == 1
 
-    #print(f"DEBUG: alive_cells count={np.sum(alive_cells)}")
-
     if (mode1 != 0 or mode2 != 0) and grid_infor is None:
         grid_infor = np.zeros((3, grid.shape[0], grid.shape[1]), dtype=np.uint8)
-        #print("DEBUG: Created grid_infor")
 
     if mode1 != 0 and grid_infor is not None:
-        #print(f"DEBUG: Transition check: {prev_mode1} -> {mode1}, condition: {prev_mode1 == 0 and mode1 != 0}")
-        
         if prev_mode1 == 0 and mode1 != 0 and np.any(alive_cells):
-            #print("DEBUG: Painting alive cells white")
             grid_infor[0, alive_cells] = 255
             grid_infor[1, alive_cells] = 255  
             grid_infor[2, alive_cells] = 255
 
-    if mode1 != 0:
+    if mode1 != 0 and grid_infor is not None:
         if mode1 == 1:
             #b
             grid_infor[0, (grid == 0) & (new_grid == 1)] = 255
@@ -94,7 +89,7 @@ def update_grid_ultra_fast(is_update_rule, mode1=0, mode2=0):
             grid_infor[2, (grid == 0) & (new_grid == 1)] = 255
             grid_infor[0, (grid == 1) & (new_grid == 1)] = 255
             
-        if mode2 == 0:
+        if mode2 == 0 and grid_infor is not None:
             grid_infor[:, new_grid==0] = 0
 
     prev_mode1 = mode1
@@ -107,6 +102,8 @@ def resize_grid_fast(new_width, new_height, mode1=0, mode2=0):
         grid = np.zeros((new_width, new_height), dtype=np.uint8)
         if mode1 != 0 or mode2 != 0:
             grid_infor = np.zeros((3, new_width, new_height), dtype=np.uint8)
+        else:
+            grid_infor = None
         prev_mode1 = mode1
         return
         
@@ -137,7 +134,8 @@ def clear_grid():
     global grid, generation, grid_infor
     if grid is not None:
         grid.fill(0)
-        grid_infor.fill(0)
+        if grid_infor is not None:
+            grid_infor.fill(0)
     generation = 0
 
 def random_grid(density=30):
@@ -148,9 +146,8 @@ def random_grid(density=30):
     generation = 0
 
 def toggle_pause():
-    global paused
-    paused = not paused
-    return paused
+    """Переключить состояние паузы"""
+    return AppState.toggle_pause()
 
 def get_grid():
     return grid
@@ -159,9 +156,14 @@ def get_grid_infor():
     return grid_infor
 
 def get_grid_info():
-    global grid, generation, paused
+    global grid, generation
     if grid is None:
-        return {'generation': 0, 'alive_cells': 0, 'total_cells': 0, 'paused': paused}
+        return {
+            'generation': 0, 
+            'alive_cells': 0, 
+            'total_cells': 0, 
+            'paused': AppState.paused
+        }
     
     alive_cells = np.sum(grid)
     total_cells = grid.size
@@ -169,7 +171,7 @@ def get_grid_info():
         'generation': generation,
         'alive_cells': alive_cells,
         'total_cells': total_cells,
-        'paused': paused
+        'paused': AppState.paused
     }
 
 def create_pattern(pattern_type):

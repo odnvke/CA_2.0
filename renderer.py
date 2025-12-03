@@ -1,4 +1,4 @@
-# renderer.py (исправленная версия с одинаковой ориентацией)
+# renderer.py (исправленная версия)
 import pyglet
 import numpy as np
 
@@ -58,7 +58,11 @@ def _get_grid_hash(grid, mode):
 
 def _init_texture(width, height):
     global texture, sprite
-    from input_manager import cell_size
+    # Используем AppState вместо импорта из input_manager
+    from app_state import AppState
+    
+    # Получаем cell_size из AppState - ПРАВИЛЬНЫЙ СПОСОБ
+    cell_size = AppState.cell_size  # Используем напрямую атрибут класса
 
     if texture is not None:
         texture.delete()
@@ -106,11 +110,6 @@ def _update_texture_multicolor_fast(grid_info, mode=1):
         image_data_cache = np.zeros((height, width, 4), dtype=np.uint8)
     
     # Ключевое исправление: используем ТАКОЕ ЖЕ транспонирование как в бинарном режиме
-    # grid_info[0] имеет форму (height, width) = (1107, 948)
-    # После транспонирования получаем (width, height) = (948, 1107)
-    # Но нам нужно (height, width) = (1107, 948) для image_data_cache
-    
-    # Правильное решение: транспонируем обратно к ориентации бинарного режима
     image_data_cache[:, :, 0] = np.clip(grid_info[0].T, 0, 255).astype(np.uint8)  # R транспонирован
     image_data_cache[:, :, 1] = np.clip(grid_info[1].T, 0, 255).astype(np.uint8)  # G транспонирован
     image_data_cache[:, :, 2] = np.clip(grid_info[2].T, 0, 255).astype(np.uint8)  # B транспонирован

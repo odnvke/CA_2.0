@@ -16,20 +16,27 @@ def set_relu_upd_false():
 
 def set_val_of_rule(S_B, n, val=False):
     global _RULE_B, _RULE_S, rule_update
-    if S_B:
-        _RULE_B[n] = not _RULE_B[n]
+    # Проверяем границы массива
+    if 0 <= n < len(_RULE_B) and 0 <= n < len(_RULE_S):
+        if S_B:
+            _RULE_B[n] = not _RULE_B[n]
+        else:
+            _RULE_S[n] = not _RULE_S[n]
+        rule_update = True
     else:
-        _RULE_S[n] = not _RULE_S[n]
-    rule_update = True
+        print(f"   >>   Error: Invalid rule index {n} (must be 0-8)")
 
 sosed_count = 8
 
 def set_rule_from_preset(preset_i):
     global _RULE_B, _RULE_S, rule_update
-    if preset_i > 0:
-        _RULE_B = preset[(preset_i-1)%(preset_count)+1]["B"].copy()
-        _RULE_S = preset[(preset_i-1)%(preset_count)+1]["S"].copy()
+    # Проверяем допустимый индекс пресета
+    if preset_i >= 1 and preset_i <= preset_count:
+        _RULE_B = preset[preset_i]["B"].copy()
+        _RULE_S = preset[preset_i]["S"].copy()
         rule_update = True
+    else:
+        print(f"   >>   Error: Invalid preset index {preset_i} (must be 1-{preset_count})")
 
 def build_preset(preset):
     global preset_count
@@ -39,13 +46,15 @@ def build_preset(preset):
         matrix_b = [False]*9
         if "B" in item and len(item["B"]) > 0:
             for num in item["B"]:
-                matrix_b[num] = True
+                if 0 <= num < 9:  # Проверяем границы
+                    matrix_b[num] = True
         item["B"] = matrix_b
         
         matrix_s = [False]*9
         if "S" in item and len(item["S"]) > 0:
             for num in item["S"]:
-                matrix_s[num] = True
+                if 0 <= num < 9:  # Проверяем границы
+                    matrix_s[num] = True
         item["S"] = matrix_s
         preset_count += 1
 
@@ -88,7 +97,6 @@ preset = {
     36: {"name": "a circle", "B": [2, 5, 6, 7, 8], "S": [3, 4, 5, 6, 7]},
     37: {"name": "a circle2", "B": [2, 5, 6, 7, 8], "S": [1, 2, 3, 4, 5, 6]}
 }
-
 
 build_preset(preset)
 

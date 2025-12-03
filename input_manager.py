@@ -1,481 +1,592 @@
 # input_manager.py
 import pyglet
-from config import _RULE_S, _RULE_B, preset, preset_count, set_val_of_rule, set_rule_from_preset
+from config import preset, preset_count, set_val_of_rule, set_rule_from_preset
+from app_state import AppState
+from ui_prints import (
+    gaide, print_rule_s, print_rule_b, print_rule, 
+    print_settings, print_help, print_input,
+    print_message, print_error, print_preset_info
+)
 
-inp = ""
-p_inp = inp
-preset_i = 0
-input_buffer = ""
+# Константы для клавиш
+_KEY_MAP = {
+    'H': pyglet.window.key.H,
+    'R': pyglet.window.key.R,
+    'C': pyglet.window.key.C,
+    'SPACE': pyglet.window.key.SPACE,
+    'F': pyglet.window.key.F,
+    'V': pyglet.window.key.V,
+    'RIGHT': pyglet.window.key.RIGHT,
+    'ESCAPE': pyglet.window.key.ESCAPE,
+    'BACKSPACE': pyglet.window.key.BACKSPACE,
+    'ENTER': pyglet.window.key.ENTER,
+    'LEFT': pyglet.window.key.LEFT,
+    'A': pyglet.window.key.A,
+    'S': pyglet.window.key.S,
+    'P': pyglet.window.key.P,
+    'Z': pyglet.window.key.Z,
+    'D': pyglet.window.key.D,
+    'B': pyglet.window.key.B,
+    'N': pyglet.window.key.N,
+    'U': pyglet.window.key.U,
+    'PERIOD': pyglet.window.key.PERIOD
+}
 
-# Settings
-target_fps = 0
-vsync_enabled = False
-cell_size = 3
-random_density = 30
-_mode1 = 0
-_mode2 = 0
-_UI = True
+_NUMBERS = [
+    pyglet.window.key._0, pyglet.window.key._1, pyglet.window.key._2,
+    pyglet.window.key._3, pyglet.window.key._4, pyglet.window.key._5,
+    pyglet.window.key._6, pyglet.window.key._7, pyglet.window.key._8,
+    pyglet.window.key._9
+]
 
-def gaide():
-    print("""
+_MODIFIERS = {
+    'CTRL': 18,
+    'SHIFT': 16
+}
 
+# Callback-функции (будут установлены из main.py)
+_callbacks = {
+    'random_grid': None,
+    'clear_grid': None,
+    'toggle_pause': None,
+    'create_pattern': None,
+    'resize_grid_fast': None,
+    'update_fps_settings': None,
+    'create_grid': None
+}
 
+def init_callbacks(callbacks_dict):
+    """Инициализировать callback-функции"""
+    global _callbacks
+    _callbacks.update(callbacks_dict)
 
+# ------------------------------------------------------------------------------
+# INPUT PROCESSING FUNCTIONS
+# ------------------------------------------------------------------------------
 
-  ================================= HELP ================================= 
-
-    [CTRL + R]  -   Random grid
-    [CTRL + C]  -   Clear
-    [CTRL + F]  -   FullScreen  
-    [CTRL + V]  -   Toggle VSync
-
-    [SPACE]  -   Toggle Pause and Play
-    [RIGHT]  -   Next frame (when paused)
-
-    [ESC]  -   Exit
-
-    [BACKSPACE]  -  Clear input
-    [ARROW LEFT]  -  Back
-
-    Commands:
-    [r]  -   go to Rule editing menu
-
-    In Rule menu:
-        [b] → [number]  -   Birth Rule toggle
-        [s] → [number]  -   Survival Rule toggle
-        [p] → [n]/[p]  -   Next or prev preset
-        [p] → [number] → [ENTER]  -   Select preset
-
-    [s]  -   go to settings menu
-
-    In setting menu:
-        [f] → [number] → [ENTER]  -   Set FPS limit
-        [z] → [number] → [ENTER]  -   Set cell size
-        [d] → [number] → [ENTER]  -   Set density of spawn(ctrl + R)
-        [r] → [a] → [number]  -   Set mode of render active cells
-        [r] → [n] → [number]  -   Set mode of render non active cells
-        [u]  -  Toggel show/hide user interface
-
-    [p] → [number]  -   Set state of grid
-
-
-    
-    [h]  -   Show this help
-
-""")
-
-def print_rule_s():
-    from config import _RULE_S
-    for i in range(len(_RULE_S)):
-        if _RULE_S[i]:
-            print(i, end=" ")
-
-def print_rule_b():
-    from config import _RULE_B
-    for i in range(len(_RULE_B)):
-        if _RULE_B[i]:
-            print(i, end=" ")
-
-def print_rule():
-    from config import _RULE_B, _RULE_S
-    s_s = ""
-    b_s = ""
-    for i in range(0, 9):
-        if _RULE_B[i]:
-            b_s += "█"
-        else: b_s += " "
-        if _RULE_S[i]:
-            s_s += "█"
-        else: s_s += " "
-        
-    print(f"""
-rule:
-           012345678
-  birth:   {b_s}
-  survival:{s_s}
-""")
-
-def print_settings():
-    fps_str = "Unlimited" if target_fps == 0 else f"{target_fps} FPS"
-    print(f"""
-Current Settings:
-  Target FPS: {target_fps} ({fps_str})
-  VSync: {'Enabled' if vsync_enabled else 'disabled'}
-  Cell Size: {cell_size} pixels
-  Random Density: {random_density}%
-""")
-
-def print_help():
-    print("\n\n\n\n\n    type h to help\n  -=-=-=- new input -=-=-=-")
-
-def print_input():
-    global inp, p_inp, input_buffer
-    
-    
-    if inp == "":
-        pass
-    else:
-        #print(f"Current input: {inp}")
-        
-        if inp == "r":
-            print("enter:    [b] - birth,  [s] - survival,  [p] - preset\n\n  =>  Rule:    ", end="")
-        elif inp == "r b":
-            print("enter:    [number] - toggle\n\n  =>  Rule:  Birth:    ", end="")
-            print_rule_b()
-        elif inp == "r s":
-            print("enter:    [number] - toggle\n\n  => Rule:  Survival:    ", end="")
-            print_rule_s()
-        elif inp == "r p":
-            print(f"enter:    [number] - select,  [n] - next,  [p] - prev\n\n  =>  Rule:  Preset:    {input_buffer}", end="")
-        elif inp == "s":
-            print("enter:    [f] - FPS,  [z] - cell size,  [d] - density,  [u] - ui hide/show,  [r] - render mode\n\n  =>  Settings:    \n", end="")
-        elif inp == "s r":
-            print("enter:    [a] - set render mode for active,  [n] - set render mode for non active(не работает),  \n\n  =>  Settings:  Render Mode:    \n", end="")
-        elif inp == "s r a":
-            print("enter:    [number]  -   select Render Mode,  \n\n  =>  Settings:  Render Mode:  Active:    \n", end="")
-        elif inp == "s r n":
-            print("enter:    [number]  -   select Render Mode,  \n\n  =>  Settings:  Render Mode:  Non Active:    \n", end="")
-        elif inp == "s f":
-            print(f"enter:    [number] - set\n\n  =>  Settings:  FPS Limit:    {input_buffer} ", end="")
-        elif inp == "s z":
-            print(f"enter:    [number] - set\n\n  =>  Settings:  Cell Size:    {input_buffer} ", end="")
-        elif inp == "s d":
-            print(f"enter:    [number] - set\n\n  =>  Settings:  Density Of Spawn:    {input_buffer} ", end="")
-        elif inp == "p":
-            print("enter:    [number] - set (1 (single), 2 (2x2), 3 (cross), 4 (glider), 5 (spaceship))\n\n  =>  Set State Of Grid:    ", end="")
-        
-        print()
-
-numbers = [pyglet.window.key._0, pyglet.window.key._1, pyglet.window.key._2, pyglet.window.key._3, pyglet.window.key._4, pyglet.window.key._5, pyglet.window.key._6, pyglet.window.key._7, pyglet.window.key._8, pyglet.window.key._9]
-
-def on_key_press(symbol, modifiers):
-    global inp, numbers, preset_i, preset, set_rule_from_preset, _RULE_B, _RULE_S
-    global target_fps, cell_size, random_density, input_buffer, _UI, _mode1, _mode2
-
-    from config import _RULE_B, _RULE_S
-
-    if symbol == pyglet.window.key.H:
+def process_global_shortcut(symbol, modifiers):
+    """Process global keyboard shortcuts"""
+    if symbol == _KEY_MAP['R'] and modifiers == _MODIFIERS['CTRL']:
+        return 'reset'
+    elif symbol == _KEY_MAP['C'] and modifiers == _MODIFIERS['CTRL']:
+        return 'clear'
+    elif symbol == _KEY_MAP['SPACE']:
+        return 'pause'
+    elif symbol == _KEY_MAP['F'] and modifiers == _MODIFIERS['CTRL']:
+        return 'toggle_fullscreen'
+    elif symbol == _KEY_MAP['V'] and modifiers == _MODIFIERS['CTRL']:
+        AppState.vsync_enabled = not AppState.vsync_enabled
+        print_message(f"VSync {'enabled' if AppState.vsync_enabled else 'disabled'}")
+        return 'vsync_changed'
+    elif symbol == _KEY_MAP['RIGHT'] and modifiers == _MODIFIERS['SHIFT']:
+        return 'next_frame'
+    elif symbol == _KEY_MAP['ESCAPE']:
+        print("exit")
+        pyglet.app.exit()
+        return False
+    elif symbol == _KEY_MAP['H']:
         gaide()
         return False
     
-    # Global shortcuts
-    if symbol == pyglet.window.key.R and modifiers == 18:
-        return 'reset'
-    elif symbol == pyglet.window.key.C and modifiers == 18:
-        return 'clear'
-    elif symbol == pyglet.window.key.SPACE:
-        return 'pause'
-    elif symbol == pyglet.window.key.F and modifiers == 18:
-        return 'toggle_fullscreen'
-    elif symbol == pyglet.window.key.V and modifiers == 18:
-        global vsync_enabled
-        vsync_enabled = not vsync_enabled
-        print(f"   >>   VSync {'enabled' if vsync_enabled else 'disabled'}")
-        return 'vsync_changed'
-    elif symbol == pyglet.window.key.RIGHT and modifiers == 16:
-        return 'next_frame'
-    elif symbol == pyglet.window.key.ESCAPE:
-            print("exit")
-            pyglet.app.exit()
-            return False
+    return None
 
-    if modifiers == 16:
-        if symbol == pyglet.window.key.BACKSPACE:
-            inp = ""
-            input_buffer = ""
-            print("\n   >>   Input cleared")
+def handle_enter_key():
+    """Process Enter key for confirming inputs"""
+    if AppState.current_input == "s f" and AppState.input_buffer:
+        try:
+            AppState.target_fps = float(AppState.input_buffer)
+            AppState.input_buffer = ""
+            print_message(f"Target FPS set to {AppState.target_fps}")
+            return 'fps_changed'
+        except ValueError:
+            print_error("Invalid FPS value")
+ 
+    elif AppState.current_input == "s z" and AppState.input_buffer:
+        try:
+            AppState.cell_size = max(0, float(AppState.input_buffer))
+            AppState.input_buffer = ""
+            print_message(f"Cell size set to {AppState.cell_size} pixels")
+            return 'cell_size_changed'
+        except ValueError:
+            print_error("Invalid cell size")
+            AppState.reset_input()
+            
+    elif AppState.current_input == "s d" and AppState.input_buffer:
+        try:
+            AppState.random_density = max(0, min(100, float(AppState.input_buffer)))
+            AppState.input_buffer = ""
+            print_message(f"Random density set to {AppState.random_density}%")
+        except ValueError:
+            print_error("Invalid density value")
+            AppState.reset_input()
+
+    elif AppState.current_input == "r p" and AppState.input_buffer:
+        try:
+            preset_index = int(AppState.input_buffer)
+            preset_index = max(1, min(preset_count, preset_index))
+            AppState.preset_index = preset_index
+            print_help()
+            print_preset_info(preset_index, preset[preset_index]['name'])
+            set_rule_from_preset(preset_index)
+            print_rule()
+            print_input(AppState.current_input, AppState.input_buffer)
+            AppState.input_buffer = ""
+        except ValueError:
+            print_error("Invalid preset num")
+            AppState.reset_input()
+    
+    return None
+
+def process_menu_navigation(symbol):
+    """Process menu navigation keys"""
+    if symbol == _KEY_MAP['R'] and AppState.current_input == "":
+        AppState.current_input = "r"
+        AppState.input_buffer = ""
+        print_help()
+        print_rule()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif symbol == _KEY_MAP['R'] and AppState.current_input == "s":
+        AppState.current_input = "s r"
+        AppState.input_buffer = ""
+        print_help()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif symbol == _KEY_MAP['S'] and AppState.current_input == "":
+        AppState.current_input = "s"
+        AppState.input_buffer = ""
+        print_help()
+        print_settings(AppState.target_fps, AppState.vsync_enabled, 
+                      AppState.cell_size, AppState.random_density)
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif symbol == _KEY_MAP['S'] and AppState.current_input == "r":
+        AppState.current_input = "r s"
+        AppState.input_buffer = ""
+        print_help()
+        print_rule()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif symbol == _KEY_MAP['P'] and AppState.current_input == "":
+        AppState.current_input = "p"
+        AppState.input_buffer = ""
+        print_help()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif symbol == _KEY_MAP['P'] and AppState.current_input == "r":
+        AppState.current_input = "r p"
+        AppState.input_buffer = ""
+        print_help()
+        print_rule()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    
+    return False
+
+def process_submenu_navigation(symbol):
+    """Process submenu navigation"""
+    if symbol == _KEY_MAP['F'] and AppState.current_input == "s":
+        AppState.current_input = "s f"
+        AppState.input_buffer = ""
+        print_help()
+        print_rule()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif symbol == _KEY_MAP['Z'] and AppState.current_input == "s":
+        AppState.current_input = "s z"
+        AppState.input_buffer = ""
+        print_help()
+        print_rule()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif symbol == _KEY_MAP['D'] and AppState.current_input == "s":
+        AppState.current_input = "s d"
+        AppState.input_buffer = ""
+        print_help()
+        print_rule()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif symbol == _KEY_MAP['B'] and AppState.current_input == "r":
+        AppState.current_input = "r b"
+        AppState.input_buffer = ""
+        print_help()
+        print_rule()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif symbol == _KEY_MAP['A'] and AppState.current_input == "s r":
+        AppState.current_input = "s r a"
+        print_help()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif symbol == _KEY_MAP['N'] and AppState.current_input == "s r":
+        AppState.current_input = "s r n"
+        print_help()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    
+    return False
+
+def handle_preset_navigation(symbol):
+    """Handle preset navigation"""
+    if symbol == _KEY_MAP['P'] and AppState.current_input == "r p":
+        AppState.preset_index -= 1
+        if AppState.preset_index < 1:
+            AppState.preset_index = preset_count
+        print_help()
+        set_rule_from_preset(AppState.preset_index)
+        print_preset_info(AppState.preset_index, preset[AppState.preset_index]['name'], "Switched to prev")
+        print_rule()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif symbol == _KEY_MAP['N'] and AppState.current_input == "r p":
+        AppState.preset_index += 1
+        if AppState.preset_index > preset_count:
+            AppState.preset_index = 1
+        set_rule_from_preset(AppState.preset_index)
+        print_help()
+        print_preset_info(AppState.preset_index, preset[AppState.preset_index]['name'], "Switched to next")
+        print_rule()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    
+    return False
+
+def process_numeric_input(symbol):
+    """Process numeric key input"""
+    if symbol in _NUMBERS:
+        num = _NUMBERS.index(symbol)
+        
+        # Rule editing (single digits)
+        if AppState.current_input == "r b":
+            if 0 <= num <= 8:
+                set_val_of_rule(1, num)
+                print_help()
+                print_rule()
+                print_input(AppState.current_input, AppState.input_buffer)
+                print_rule_b()
+                return None
+            else:
+                print_error(f"Invalid number: {num} (must be 0-8)")
+                return None
+                
+        elif AppState.current_input == "r s":
+            from config import sosed_count
+            if 0 <= num <= 8:
+                set_val_of_rule(0, num)
+                print_help()
+                print_rule()
+                print_input(AppState.current_input, AppState.input_buffer)
+                print_rule_s()
+                return None
+            else:
+                print_error(f"Invalid number: {num} (must be 0-8)")
+                return None
+
+        elif AppState.current_input == "s r a":
+            AppState.render_mode_active = max(min(num, 2), 0)
+            print_help()
+            print_input(AppState.current_input, AppState.input_buffer)
+            print_message(f"set render mode for active:{AppState.render_mode_active}")
+            return "mode1"
+
+        elif AppState.current_input == "s r n":
+            AppState.render_mode_inactive = max(min(num, 1), 0)
+            print_help()
+            print_input(AppState.current_input, AppState.input_buffer)
+            print_message(f"set render mode for non active:{AppState.render_mode_inactive}")
+            return "mode2"
+
+        # Start patterns (однозначные числа)
+        elif AppState.current_input == "p":
+            if num in [1, 2, 3, 4, 5]:
+                return f'pattern_{num}'
+            else:
+                print_error(f"Invalid pattern number: {num} (must be 1-5)")
+                return None
+    
+    # Multi-digit number input
+    if symbol in _NUMBERS or symbol == _KEY_MAP['PERIOD']:
+        if AppState.current_input in ["s f", "s z", "s d", "r p"]:
+            if symbol == _KEY_MAP['PERIOD']:
+                AppState.input_buffer += "."
+            else: 
+                AppState.input_buffer += str(_NUMBERS.index(symbol) if symbol in _NUMBERS else 0)
+            
+            # Обновляем отображение
+            if AppState.current_input in ["s f", "s z", "s d"]:
+                print_help()
+                print_settings(AppState.target_fps, AppState.vsync_enabled, 
+                             AppState.cell_size, AppState.random_density)
+                print_input(AppState.current_input, AppState.input_buffer)
+            elif AppState.current_input == "r p":
+                print_help()
+                print_rule()
+                print_input(AppState.current_input, AppState.input_buffer)
+            return None
+    
+    return None
+
+def handle_back_navigation(symbol):
+    """Handle back navigation (left arrow)"""
+    if AppState.current_input in ["r", "p", "s"]:
+        AppState.reset_input()
+        print_help()
+        print("\n <= Back to menu")
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif AppState.current_input in ["r b", "r s"]:
+        AppState.current_input = "r"
+        AppState.input_buffer = ""
+        print_help()
+        print("\n <= Back to rule menu")
+        print_rule()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif AppState.current_input == "r p":
+        AppState.current_input = "r"
+        AppState.input_buffer = ""
+        print_help()
+        print("\n <= Back to rule menu")
+        print_rule()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif AppState.current_input in ["s f", "s z", "s d", "s r"]:
+        if AppState.input_buffer:
+            AppState.input_buffer = AppState.input_buffer[:-1]
+            print_input(AppState.current_input, AppState.input_buffer)
+        else:
+            AppState.current_input = "s"
+            AppState.input_buffer = ""
+            print_help()
+            print("\n <= Back to settings menu")
+            print_settings(AppState.target_fps, AppState.vsync_enabled, 
+                          AppState.cell_size, AppState.random_density)
+            print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif AppState.current_input in ["s r a", "s r n"]:
+        AppState.current_input = "s r"
+        print_help()
+        print("\n <= Back to select Render Mode")
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    elif AppState.current_input == "":
+        print_help()
+        print_input(AppState.current_input, AppState.input_buffer)
+        print("\n   >>   we in root  -  try input [r], [s], [p] or [h]")
+        return True
+    
+    return False
+
+# ------------------------------------------------------------------------------
+# MAIN EVENT HANDLER
+# ------------------------------------------------------------------------------
+
+def on_key_press(symbol, modifiers):
+    """Main key press handler"""
+    # Check global shortcuts first
+    shortcut_result = process_global_shortcut(symbol, modifiers)
+    if shortcut_result is not None:
+        return _handle_shortcut_result(shortcut_result)
+    
+    # Handle shift modifier input
+    if modifiers == _MODIFIERS['SHIFT']:
+        if symbol == _KEY_MAP['BACKSPACE']:
+            AppState.reset_input()
+            print_message("Input cleared")
             return False
             
-
-
-        elif symbol == pyglet.window.key.ENTER or symbol == pyglet.window.key.SPACE:
-            # Обработка ввода многозначных чисел
-            if inp == "s f" and input_buffer:
-                try:
-                    inp = "s f"
-                    target_fps = float(input_buffer)
-                    input_buffer = ""
-                    print(f"\n   >>   Target FPS set to {target_fps}")
-                    return 'fps_changed'
-                except ValueError:
-                    print("\n   >>   Invalid FPS value")
- 
-            elif inp == "s z" and input_buffer:
-                try:
-                    cell_size = max(0, float(input_buffer))
-                    print(f"\n   >>   Cell size set to {cell_size} pixels")
-                    inp = "s z"
-                    input_buffer = ""
-                    return 'cell_size_changed'
-                except ValueError:
-                    print("\n   >>   Invalid cell size")
-                    inp = ""
-                    input_buffer = ""
-                    
-            elif inp == "s d" and input_buffer:
-                try:
-                    random_density = max(0, min(100, float(input_buffer)))
-                    print(f"\n   >>   Random density set to {random_density}%")
-                    inp = "s d"
-                    input_buffer = ""
-                except ValueError:
-                    print("\n   >>   Invalid density value")
-                    inp = ""
-                    input_buffer = ""
-
-            elif inp == "r p" and input_buffer:
-                try:
-                    preset_i = int(input_buffer)
-                    preset_i = max(1, min(preset_count, preset_i))
-                    print_help()
-                    print(f"\n   >>   Selected preset:  ({preset_i}) {preset[preset_i]['name']}")
-                    set_rule_from_preset(preset_i)
-                    print_rule()
-                    print_input()
-                    inp = "r p"
-                    input_buffer = ""
-                except ValueError:
-                    print("\n   >>   Invalid preset num")
-                    inp = ""
-                    input_buffer = ""
+        elif symbol == _KEY_MAP['ENTER'] or symbol == _KEY_MAP['SPACE']:
+            enter_result = handle_enter_key()
+            if enter_result is not None:
+                return _handle_shortcut_result(enter_result)
             return False
 
-        elif symbol == pyglet.window.key.A:
-            if inp == "s r":
-                inp = "s r a"
+        elif symbol == _KEY_MAP['A']:
+            if AppState.current_input == "s r":
+                AppState.current_input = "s r a"
                 print_help()
-                print_input()
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
 
-        elif symbol == pyglet.window.key.R:
-            if inp == "":
-                inp = "r"
-                input_buffer = ""
+        elif symbol == _KEY_MAP['R']:
+            if AppState.current_input == "":
+                AppState.current_input = "r"
+                AppState.input_buffer = ""
                 print_help()
                 print_rule()
-                print_input()
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
-            if inp == "s":
-                inp = "s r"
-                input_buffer = ""
+            if AppState.current_input == "s":
+                AppState.current_input = "s r"
+                AppState.input_buffer = ""
                 print_help()
-                print_input()
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
                 
-        elif symbol == pyglet.window.key.S:
-            if inp == "":
-                inp = "s"
-                input_buffer = ""
+        elif symbol == _KEY_MAP['S']:
+            if AppState.current_input == "":
+                AppState.current_input = "s"
+                AppState.input_buffer = ""
                 print_help()
-                print_settings()
-                print_input()
+                print_settings(AppState.target_fps, AppState.vsync_enabled, 
+                             AppState.cell_size, AppState.random_density)
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
-            if inp == "r":
-                inp = "r s"
-                input_buffer = ""
+            if AppState.current_input == "r":
+                AppState.current_input = "r s"
+                AppState.input_buffer = ""
                 print_help()
                 print_rule()
-                print_input()
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
                 
-        elif symbol == pyglet.window.key.P:
-            if inp == "":
-                inp = "p"
-                input_buffer = ""
+        elif symbol == _KEY_MAP['P']:
+            if AppState.current_input == "":
+                AppState.current_input = "p"
+                AppState.input_buffer = ""
                 print_help()
-                print_input()
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
-            elif inp == "r":
-                inp = "r p"
-                input_buffer = ""
+            elif AppState.current_input == "r":
+                AppState.current_input = "r p"
+                AppState.input_buffer = ""
                 print_help()
                 print_rule()
-                print_input()
-                return False
-            if inp == "r p":
-                preset_i -= 1
-                if preset_i < 0: preset_i = preset_count-1
-                print_help()
-                set_rule_from_preset(preset_i)
-                print(f"\n   >>   Switched to prev preset ({preset_i}): {preset[preset_i]['name']}")
-                print_rule()
-                print_input()
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
 
-        elif symbol == pyglet.window.key.F:
-            if inp == "s":
-                inp = "s f"
-                input_buffer = ""
+        elif symbol == _KEY_MAP['F']:
+            if AppState.current_input == "s":
+                AppState.current_input = "s f"
+                AppState.input_buffer = ""
                 print_help()
                 print_rule()
-                print_input()
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
                 
-        elif symbol == pyglet.window.key.Z:
-            if inp == "s":
-                inp = "s z"
-                input_buffer = ""
+        elif symbol == _KEY_MAP['Z']:
+            if AppState.current_input == "s":
+                AppState.current_input = "s z"
+                AppState.input_buffer = ""
                 print_help()
                 print_rule()
-                print_input()
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
                 
-        elif symbol == pyglet.window.key.D:
-            if inp == "s":
-                inp = "s d"
-                input_buffer = ""
+        elif symbol == _KEY_MAP['D']:
+            if AppState.current_input == "s":
+                AppState.current_input = "s d"
+                AppState.input_buffer = ""
                 print_help()
                 print_rule()
-                print_input()
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
                 
-        elif symbol == pyglet.window.key.B:
-            if inp == "r":
-                inp = "r b"
-                input_buffer = ""
+        elif symbol == _KEY_MAP['B']:
+            if AppState.current_input == "r":
+                AppState.current_input = "r b"
+                AppState.input_buffer = ""
                 print_help()
                 print_rule()
-                print_input()
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
                 
-                
-        elif symbol == pyglet.window.key.N:
-            if inp == "r p":
-                preset_i = ((preset_i) % preset_count) + 1
-                set_rule_from_preset(preset_i)
+        elif symbol == _KEY_MAP['N']:
+            if AppState.current_input == "r p":
+                AppState.preset_index += 1
+                if AppState.preset_index > preset_count:
+                    AppState.preset_index = 1
+                set_rule_from_preset(AppState.preset_index)
                 print_help()
-                print(f"\n   >>   Switched to next preset ({preset_i}): {preset[preset_i]['name']}")
+                print_preset_info(AppState.preset_index, preset[AppState.preset_index]['name'], "Switched to next")
                 print_rule()
-                print_input()
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
-            if inp == "s r":
-                inp = "s r n"
+            if AppState.current_input == "s r":
+                AppState.current_input = "s r n"
                 print_help()
-                print_input()
+                print_input(AppState.current_input, AppState.input_buffer)
                 return False
         
-        elif symbol == pyglet.window.key.U:
-            if inp == "s":
-                _UI = not _UI
-                print("   >>   ui visible toggled")
+        elif symbol == _KEY_MAP['U']:
+            if AppState.current_input == "s":
+                AppState.toggle_ui_visibility()
+                print_message("ui visible toggled")
                 return "changed ui visible"
 
-        elif symbol in numbers:
-            num = numbers.index(symbol)
+        # Numeric input
+        numeric_result = process_numeric_input(symbol)
+        if numeric_result is not None:
+            if numeric_result is not None and numeric_result != False:
+                return _handle_numeric_result(numeric_result)
             
-            # Rule editing (однозначные числа)
-            if inp == "r b":
-                #from config import sosed_count
-                #if -1 < num <= sosed_count:
-                if True:
-                    set_val_of_rule(1, num)
-                    print_help()
-                    print_rule()
-                    print_input()
-                    print_rule_b()
-                    inp = "r b"
-                    return False
-                
-            elif inp == "r s":
-                from config import sosed_count
-                if -1 < num <= sosed_count:
-                    set_val_of_rule(0, num)
-                    print_help()
-                    print_rule()
-                    print_input()
-                    print_rule_s()
-                    inp = "r s"
-                    return False
-
-            elif inp == "s r a":
-                _mode1 = max(min(num, 2), 0)
-                inp = "s r a"
-                print_help()
-                print_input()
-                print(f"\n   >>   set render mode for active:{_mode1}")
-                return "mode1"
-
-            elif inp == "s r n":
-                _mode2 = max(min(num, 1), 0)
-                inp = "s r n"
-                print_help()
-                print_input()
-                print(f"\n   >>   set render mode for non active:{_mode2}")
-                return "mode2"
-
-            # Start patterns (однозначные числа)
-            elif inp == "p":
-                if num in [1, 2, 3, 4, 5]:
-                    inp = "p"
-                    return f'pattern_{num}'            
-
-        if symbol in numbers or symbol == pyglet.window.key.PERIOD:
-            if inp in ["s f", "s z", "s d",  "r p"]:
-                if symbol == pyglet.window.key.PERIOD:
-                    input_buffer += "."
-                else: 
-                    input_buffer += str(num)
-                if inp in ["s f", "s z", "s d"]:
-                    print_help()
-                    print_settings()
-                    print_input()
-                elif inp == "r p":
-                    print_help()
-                    print_rule()
-                    print_input()                   
+        # Multi-digit input update
+        if symbol in _NUMBERS or symbol == _KEY_MAP['PERIOD']:
+            if AppState.current_input in ["s f", "s z", "s d", "r p"]:
                 return False
 
-            
-        elif symbol == pyglet.window.key.LEFT:
-            if inp in ["r", "p", "s"]:
-                inp = ""
-                input_buffer = ""
-                print_help()
-                print("\n <= Back to menu")
-                print_input()
+        # Back navigation
+        if symbol == _KEY_MAP['LEFT']:
+            if handle_back_navigation(symbol):
                 return False
-            if inp in ["r b", "r s"]:
-                inp = "r"
-                input_buffer = ""
-                print_help()
-                print("\n <= Back to rule menu")
-                print_rule()
-                print_input()
-                return False
-            elif inp == "r p":
-                inp = "r"
-                input_buffer = ""
-                print_help()
-                print("\n <= Back to rule menu")
-                print_rule()
-                print_input()
-                return False
-            elif inp in ["s f", "s z", "s d", "s r"]:
-                if input_buffer:
-                    input_buffer = input_buffer[:-1]
-                    print_input()
-                else:
-                    inp = "s"
-                    input_buffer = ""
-                    print_help()
-                    print("\n <= Back to rule menu")
-                    print_rule()
-                    print_input()
-                return False
-            elif inp in ["s r a", "s r n"]:
-                inp = "s r"
-                print_help()
-                print("\n <= Back to select Render Mode")
-                print_input()
-                return False
-            elif inp == "":
-                print_help()
-                print_input()
-                print("\n   >>   we in root  -  try input [r], [s], [p] or [h]")
-                return False
+        
         print_help()
-        print_input()
+        print_input(AppState.current_input, AppState.input_buffer)
+    
     return False
+
+def _handle_shortcut_result(result):
+    """Обработка результатов сочетаний клавиш"""
+    if result == 'reset' and _callbacks['random_grid']:
+        _callbacks['random_grid'](AppState.random_density)
+        return result
+    elif result == 'clear' and _callbacks['clear_grid']:
+        _callbacks['clear_grid']()
+        return result
+    elif result == 'pause' and _callbacks['toggle_pause']:
+        _callbacks['toggle_pause']()
+        return result
+    elif result == 'toggle_fullscreen' and AppState.window:
+        AppState.window.set_fullscreen(not AppState.window.fullscreen)
+        return result
+    elif result == 'vsync_changed' and AppState.window:
+        AppState.window.set_vsync(not AppState.window.vsync)
+        return result
+    elif result == 'fps_changed' and _callbacks['update_fps_settings']:
+        _callbacks['update_fps_settings']()
+        return result
+    elif result == 'cell_size_changed' and _callbacks['create_grid']:
+        _callbacks['create_grid']()
+        return result
+    elif result == 'next_frame':
+        AppState.single_step = True
+        return result
+    
+    return result
+
+def _handle_numeric_result(result):
+    """Обработка результатов числового ввода"""
+    if result is None:
+        return None
+    
+    if isinstance(result, str) and result.startswith('pattern_') and _callbacks['create_pattern']:
+        pattern_type = int(result.split('_')[1])
+        _callbacks['create_pattern'](pattern_type)
+        return result
+    elif result == "mode1" and _callbacks['resize_grid_fast']:
+        _callbacks['resize_grid_fast'](AppState.window_width, AppState.window_height, 
+                                      mode1=AppState.render_mode_active)
+        return result
+    elif result == "mode2" and _callbacks['resize_grid_fast']:
+        _callbacks['resize_grid_fast'](AppState.window_width, AppState.window_height, 
+                                      mode2=AppState.render_mode_inactive)
+        return result
+    
+    return result
+
+# ------------------------------------------------------------------------------
+# MOUSE HANDLERS
+# ------------------------------------------------------------------------------
 
 def on_mouse_press(x, y, button, modifiers):
     return False
@@ -490,9 +601,10 @@ def on_mouse_scroll(x, y, scroll_x, scroll_y):
     return False
 
 def get_settings():
+    """Get current settings (for backward compatibility)"""
     return {
-        'target_fps': target_fps,
-        'vsync_enabled': vsync_enabled,
-        'cell_size': cell_size,
-        'random_density': random_density
+        'target_fps': AppState.target_fps,
+        'vsync_enabled': AppState.vsync_enabled,
+        'cell_size': AppState.cell_size,
+        'random_density': AppState.random_density
     }

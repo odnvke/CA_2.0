@@ -1,0 +1,79 @@
+# app_state.py
+"""
+Класс для хранения глобального состояния приложения.
+Простая реализация с атрибутами класса для обратной совместимости.
+"""
+
+class AppState:
+    """Статический класс для хранения глобального состояния приложения"""
+    
+    # Основные настройки
+    target_fps = 0
+    vsync_enabled = False
+    cell_size = 1
+    random_density = 30
+    ui_visible = True
+    
+    # Режимы рендеринга
+    render_mode_active = 0
+    render_mode_inactive = 0
+    
+    # Состояния ввода
+    current_input = ""
+    input_buffer = ""
+    preset_index = 0
+    
+    # Состояния приложения
+    single_step = False
+    paused = False
+    window_width = 1200
+    window_height = 800
+    grid_width = 0
+    grid_height = 0
+    
+    # Ссылка на главное окно
+    window = None
+    
+    @classmethod
+    def init_window(cls, window):
+        """Инициализировать ссылку на окно"""
+        cls.window = window
+    
+    @classmethod
+    def update_window_size(cls, width, height):
+        """Обновить размеры окна"""
+        cls.window_width = width
+        cls.window_height = height
+        cls.grid_width = int(width / cls.cell_size)
+        cls.grid_height = int(height / cls.cell_size)
+    
+    @classmethod
+    def reset_input(cls):
+        """Сбросить состояние ввода"""
+        cls.current_input = ""
+        cls.input_buffer = ""
+    
+    @classmethod
+    def toggle_ui_visibility(cls):
+        """Переключить видимость UI"""
+        cls.ui_visible = not cls.ui_visible
+        return cls.ui_visible
+    
+    @classmethod
+    def toggle_pause(cls):
+        """Переключить состояние паузы"""
+        cls.paused = not cls.paused
+        return cls.paused
+    
+    @classmethod
+    def get_all_settings(cls):
+        """Получить все настройки в виде словаря"""
+        return {
+            'target_fps': cls.target_fps,
+            'vsync_enabled': cls.vsync_enabled,
+            'cell_size': cls.cell_size,
+            'random_density': cls.random_density,
+            'render_mode_active': cls.render_mode_active,
+            'render_mode_inactive': cls.render_mode_inactive,
+            'ui_visible': cls.ui_visible
+        }
