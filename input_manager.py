@@ -1,6 +1,6 @@
 # input_manager.py
 import pyglet
-from config import preset, preset_count, set_val_of_rule, set_rule_from_preset
+from rules import RuleManager
 from app_state import AppState
 from ui_prints import (
     gaide, print_rule_s, print_rule_b, print_rule, 
@@ -40,11 +40,12 @@ _NUMBERS = [
 ]
 
 _MODIFIERS = {
-    'CTRL': 18,
-    'SHIFT': 16
+    'CTRL': pyglet.window.key.MOD_CTRL,      # 64
+    'SHIFT': pyglet.window.key.MOD_SHIFT,    # 1
+    'ALT': pyglet.window.key.MOD_ALT         # 8
 }
 
-# Callback-функции (будут установлены из main.py)
+# Callback-функции
 _callbacks = {
     'random_grid': None,
     'clear_grid': None,
@@ -60,25 +61,25 @@ def init_callbacks(callbacks_dict):
     global _callbacks
     _callbacks.update(callbacks_dict)
 
-# ------------------------------------------------------------------------------
-# INPUT PROCESSING FUNCTIONS
-# ------------------------------------------------------------------------------
-
 def process_global_shortcut(symbol, modifiers):
     """Process global keyboard shortcuts"""
-    if symbol == _KEY_MAP['R'] and modifiers == _MODIFIERS['CTRL']:
-        return 'reset'
-    elif symbol == _KEY_MAP['C'] and modifiers == _MODIFIERS['CTRL']:
-        return 'clear'
-    elif symbol == _KEY_MAP['SPACE']:
+    # CTRL комбинации
+    if modifiers & _MODIFIERS['CTRL']:
+        if symbol == _KEY_MAP['R']:
+            return 'reset'
+        elif symbol == _KEY_MAP['C']:
+            return 'clear'
+        elif symbol == _KEY_MAP['F']:
+            return 'toggle_fullscreen'
+        elif symbol == _KEY_MAP['V']:
+            AppState.vsync_enabled = not AppState.vsync_enabled
+            print_message(f"VSync {'enabled' if AppState.vsync_enabled else 'disabled'}")
+            return 'vsync_changed'
+    
+    # Одиночные клавиши
+    if symbol == _KEY_MAP['SPACE']:
         return 'pause'
-    elif symbol == _KEY_MAP['F'] and modifiers == _MODIFIERS['CTRL']:
-        return 'toggle_fullscreen'
-    elif symbol == _KEY_MAP['V'] and modifiers == _MODIFIERS['CTRL']:
-        AppState.vsync_enabled = not AppState.vsync_enabled
-        print_message(f"VSync {'enabled' if AppState.vsync_enabled else 'disabled'}")
-        return 'vsync_changed'
-    elif symbol == _KEY_MAP['RIGHT'] and modifiers == _MODIFIERS['SHIFT']:
+    elif symbol == _KEY_MAP['RIGHT'] and AppState.paused:
         return 'next_frame'
     elif symbol == _KEY_MAP['ESCAPE']:
         print("exit")
@@ -100,10 +101,11 @@ def handle_enter_key():
             return 'fps_changed'
         except ValueError:
             print_error("Invalid FPS value")
+            AppState.reset_input()
  
     elif AppState.current_input == "s z" and AppState.input_buffer:
         try:
-            AppState.cell_size = max(0, float(AppState.input_buffer))
+            AppState.cell_size = max(0.1, float(AppState.input_buffer))
             AppState.input_buffer = ""
             print_message(f"Cell size set to {AppState.cell_size} pixels")
             return 'cell_size_changed'
@@ -123,165 +125,59 @@ def handle_enter_key():
     elif AppState.current_input == "r p" and AppState.input_buffer:
         try:
             preset_index = int(AppState.input_buffer)
-            preset_index = max(1, min(preset_count, preset_index))
-            AppState.preset_index = preset_index
-            print_help()
-            print_preset_info(preset_index, preset[preset_index]['name'])
-            set_rule_from_preset(preset_index)
-            print_rule()
-            print_input(AppState.current_input, AppState.input_buffer)
-            AppState.input_buffer = ""
+            preset_count = RuleManager.get_preset_count()
+            
+            if 1 <= preset_index <= preset_count:
+                AppState.preset_index = preset_index
+                
+                success = RuleManager.load_preset(preset_index)
+                if success:
+                    print_help()
+                    preset = RuleManager.get_preset(preset_index)
+                    print_preset_info(preset_index, preset.name)
+                    print_rule()
+                else:
+                    print_error(f"Preset {preset_index} not found")
+                print_input(AppState.current_input, AppState.input_buffer)
+                AppState.input_buffer = ""
+            else:
+                print_error(f"Invalid preset number (must be 1-{preset_count})")
+                AppState.reset_input()
         except ValueError:
-            print_error("Invalid preset num")
+            print_error("Invalid preset number")
             AppState.reset_input()
     
     return None
-
-def process_menu_navigation(symbol):
-    """Process menu navigation keys"""
-    if symbol == _KEY_MAP['R'] and AppState.current_input == "":
-        AppState.current_input = "r"
-        AppState.input_buffer = ""
-        print_help()
-        print_rule()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    elif symbol == _KEY_MAP['R'] and AppState.current_input == "s":
-        AppState.current_input = "s r"
-        AppState.input_buffer = ""
-        print_help()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    elif symbol == _KEY_MAP['S'] and AppState.current_input == "":
-        AppState.current_input = "s"
-        AppState.input_buffer = ""
-        print_help()
-        print_settings(AppState.target_fps, AppState.vsync_enabled, 
-                      AppState.cell_size, AppState.random_density)
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    elif symbol == _KEY_MAP['S'] and AppState.current_input == "r":
-        AppState.current_input = "r s"
-        AppState.input_buffer = ""
-        print_help()
-        print_rule()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    elif symbol == _KEY_MAP['P'] and AppState.current_input == "":
-        AppState.current_input = "p"
-        AppState.input_buffer = ""
-        print_help()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    elif symbol == _KEY_MAP['P'] and AppState.current_input == "r":
-        AppState.current_input = "r p"
-        AppState.input_buffer = ""
-        print_help()
-        print_rule()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    
-    return False
-
-def process_submenu_navigation(symbol):
-    """Process submenu navigation"""
-    if symbol == _KEY_MAP['F'] and AppState.current_input == "s":
-        AppState.current_input = "s f"
-        AppState.input_buffer = ""
-        print_help()
-        print_rule()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    elif symbol == _KEY_MAP['Z'] and AppState.current_input == "s":
-        AppState.current_input = "s z"
-        AppState.input_buffer = ""
-        print_help()
-        print_rule()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    elif symbol == _KEY_MAP['D'] and AppState.current_input == "s":
-        AppState.current_input = "s d"
-        AppState.input_buffer = ""
-        print_help()
-        print_rule()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    elif symbol == _KEY_MAP['B'] and AppState.current_input == "r":
-        AppState.current_input = "r b"
-        AppState.input_buffer = ""
-        print_help()
-        print_rule()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    elif symbol == _KEY_MAP['A'] and AppState.current_input == "s r":
-        AppState.current_input = "s r a"
-        print_help()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    elif symbol == _KEY_MAP['N'] and AppState.current_input == "s r":
-        AppState.current_input = "s r n"
-        print_help()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    
-    return False
-
-def handle_preset_navigation(symbol):
-    """Handle preset navigation"""
-    if symbol == _KEY_MAP['P'] and AppState.current_input == "r p":
-        AppState.preset_index -= 1
-        if AppState.preset_index < 1:
-            AppState.preset_index = preset_count
-        print_help()
-        set_rule_from_preset(AppState.preset_index)
-        print_preset_info(AppState.preset_index, preset[AppState.preset_index]['name'], "Switched to prev")
-        print_rule()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    elif symbol == _KEY_MAP['N'] and AppState.current_input == "r p":
-        AppState.preset_index += 1
-        if AppState.preset_index > preset_count:
-            AppState.preset_index = 1
-        set_rule_from_preset(AppState.preset_index)
-        print_help()
-        print_preset_info(AppState.preset_index, preset[AppState.preset_index]['name'], "Switched to next")
-        print_rule()
-        print_input(AppState.current_input, AppState.input_buffer)
-        return True
-    
-    return False
 
 def process_numeric_input(symbol):
     """Process numeric key input"""
     if symbol in _NUMBERS:
         num = _NUMBERS.index(symbol)
         
-        # Rule editing (single digits)
+        # Rule editing (single digits) - переключение правил
         if AppState.current_input == "r b":
             if 0 <= num <= 8:
-                set_val_of_rule(1, num)
+                RuleManager.set_rule_value('B', num)
                 print_help()
                 print_rule()
                 print_input(AppState.current_input, AppState.input_buffer)
-                print_rule_b()
                 return None
             else:
                 print_error(f"Invalid number: {num} (must be 0-8)")
                 return None
                 
         elif AppState.current_input == "r s":
-            from config import sosed_count
             if 0 <= num <= 8:
-                set_val_of_rule(0, num)
+                RuleManager.set_rule_value('S', num)
                 print_help()
                 print_rule()
                 print_input(AppState.current_input, AppState.input_buffer)
-                print_rule_s()
                 return None
             else:
                 print_error(f"Invalid number: {num} (must be 0-8)")
                 return None
 
+        # Render modes
         elif AppState.current_input == "s r a":
             AppState.render_mode_active = max(min(num, 2), 0)
             print_help()
@@ -296,7 +192,7 @@ def process_numeric_input(symbol):
             print_message(f"set render mode for non active:{AppState.render_mode_inactive}")
             return "mode2"
 
-        # Start patterns (однозначные числа)
+        # Start patterns
         elif AppState.current_input == "p":
             if num in [1, 2, 3, 4, 5]:
                 return f'pattern_{num}'
@@ -307,16 +203,15 @@ def process_numeric_input(symbol):
     # Multi-digit number input
     if symbol in _NUMBERS or symbol == _KEY_MAP['PERIOD']:
         if AppState.current_input in ["s f", "s z", "s d", "r p"]:
-            if symbol == _KEY_MAP['PERIOD']:
+            if symbol in _NUMBERS:
+                AppState.input_buffer += str(_NUMBERS.index(symbol))
+            elif symbol == _KEY_MAP['PERIOD']:
                 AppState.input_buffer += "."
-            else: 
-                AppState.input_buffer += str(_NUMBERS.index(symbol) if symbol in _NUMBERS else 0)
             
-            # Обновляем отображение
             if AppState.current_input in ["s f", "s z", "s d"]:
                 print_help()
                 print_settings(AppState.target_fps, AppState.vsync_enabled, 
-                             AppState.cell_size, AppState.random_density)
+                            AppState.cell_size, AppState.random_density)
                 print_input(AppState.current_input, AppState.input_buffer)
             elif AppState.current_input == "r p":
                 print_help()
@@ -326,8 +221,24 @@ def process_numeric_input(symbol):
     
     return None
 
-def handle_back_navigation(symbol):
-    """Handle back navigation (left arrow)"""
+def handle_backspace():
+    """Обработка Backspace - удаление символов"""
+    if AppState.input_buffer:
+        # Удаляем последний символ из буфера
+        AppState.input_buffer = AppState.input_buffer[:-1]
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    else:
+        # Если буфер пуст, очищаем весь ввод
+        AppState.reset_input()
+        print_message("Input cleared")
+        print_help()
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+
+def handle_left_arrow():
+    """Обработка Left arrow - навигация назад по меню"""
+    # Навигация назад по меню с очисткой буфера
     if AppState.current_input in ["r", "p", "s"]:
         AppState.reset_input()
         print_help()
@@ -351,20 +262,17 @@ def handle_back_navigation(symbol):
         print_input(AppState.current_input, AppState.input_buffer)
         return True
     elif AppState.current_input in ["s f", "s z", "s d", "s r"]:
-        if AppState.input_buffer:
-            AppState.input_buffer = AppState.input_buffer[:-1]
-            print_input(AppState.current_input, AppState.input_buffer)
-        else:
-            AppState.current_input = "s"
-            AppState.input_buffer = ""
-            print_help()
-            print("\n <= Back to settings menu")
-            print_settings(AppState.target_fps, AppState.vsync_enabled, 
-                          AppState.cell_size, AppState.random_density)
-            print_input(AppState.current_input, AppState.input_buffer)
+        AppState.current_input = "s"
+        AppState.input_buffer = ""
+        print_help()
+        print("\n <= Back to settings menu")
+        print_settings(AppState.target_fps, AppState.vsync_enabled, 
+                      AppState.cell_size, AppState.random_density)
+        print_input(AppState.current_input, AppState.input_buffer)
         return True
     elif AppState.current_input in ["s r a", "s r n"]:
         AppState.current_input = "s r"
+        AppState.input_buffer = ""
         print_help()
         print("\n <= Back to select Render Mode")
         print_input(AppState.current_input, AppState.input_buffer)
@@ -377,10 +285,6 @@ def handle_back_navigation(symbol):
     
     return False
 
-# ------------------------------------------------------------------------------
-# MAIN EVENT HANDLER
-# ------------------------------------------------------------------------------
-
 def on_key_press(symbol, modifiers):
     """Main key press handler"""
     # Check global shortcuts first
@@ -388,43 +292,35 @@ def on_key_press(symbol, modifiers):
     if shortcut_result is not None:
         return _handle_shortcut_result(shortcut_result)
     
-    # Handle shift modifier input
-    if modifiers == _MODIFIERS['SHIFT']:
-        if symbol == _KEY_MAP['BACKSPACE']:
-            AppState.reset_input()
-            print_message("Input cleared")
-            return False
-            
-        elif symbol == _KEY_MAP['ENTER'] or symbol == _KEY_MAP['SPACE']:
-            enter_result = handle_enter_key()
-            if enter_result is not None:
-                return _handle_shortcut_result(enter_result)
-            return False
-
-        elif symbol == _KEY_MAP['A']:
-            if AppState.current_input == "s r":
-                AppState.current_input = "s r a"
-                print_help()
-                print_input(AppState.current_input, AppState.input_buffer)
-                return False
-
-        elif symbol == _KEY_MAP['R']:
-            if AppState.current_input == "":
+    # Handle Backspace - удаление символов
+    if symbol == _KEY_MAP['BACKSPACE']:
+        handle_backspace()
+        return False
+    
+    # Handle Left arrow - навигация назад
+    if symbol == _KEY_MAP['LEFT']:
+        handle_left_arrow()
+        return False
+    
+    # Handle Enter key
+    if symbol == _KEY_MAP['ENTER']:
+        enter_result = handle_enter_key()
+        if enter_result is not None:
+            return _handle_shortcut_result(enter_result)
+        return False
+    
+    # Menu navigation (без модификаторов)
+    if modifiers == 0:
+        # Основное меню - только когда нет активного ввода
+        if not AppState.current_input:
+            if symbol == _KEY_MAP['R']:
                 AppState.current_input = "r"
                 AppState.input_buffer = ""
                 print_help()
                 print_rule()
                 print_input(AppState.current_input, AppState.input_buffer)
                 return False
-            if AppState.current_input == "s":
-                AppState.current_input = "s r"
-                AppState.input_buffer = ""
-                print_help()
-                print_input(AppState.current_input, AppState.input_buffer)
-                return False
-                
-        elif symbol == _KEY_MAP['S']:
-            if AppState.current_input == "":
+            elif symbol == _KEY_MAP['S']:
                 AppState.current_input = "s"
                 AppState.input_buffer = ""
                 print_help()
@@ -432,106 +328,156 @@ def on_key_press(symbol, modifiers):
                              AppState.cell_size, AppState.random_density)
                 print_input(AppState.current_input, AppState.input_buffer)
                 return False
-            if AppState.current_input == "r":
-                AppState.current_input = "r s"
-                AppState.input_buffer = ""
-                print_help()
-                print_rule()
-                print_input(AppState.current_input, AppState.input_buffer)
-                return False
-                
-        elif symbol == _KEY_MAP['P']:
-            if AppState.current_input == "":
+            elif symbol == _KEY_MAP['P']:
                 AppState.current_input = "p"
                 AppState.input_buffer = ""
                 print_help()
                 print_input(AppState.current_input, AppState.input_buffer)
                 return False
-            elif AppState.current_input == "r":
-                AppState.current_input = "r p"
-                AppState.input_buffer = ""
-                print_help()
-                print_rule()
-                print_input(AppState.current_input, AppState.input_buffer)
-                return False
-
-        elif symbol == _KEY_MAP['F']:
-            if AppState.current_input == "s":
-                AppState.current_input = "s f"
-                AppState.input_buffer = ""
-                print_help()
-                print_rule()
-                print_input(AppState.current_input, AppState.input_buffer)
-                return False
-                
-        elif symbol == _KEY_MAP['Z']:
-            if AppState.current_input == "s":
-                AppState.current_input = "s z"
-                AppState.input_buffer = ""
-                print_help()
-                print_rule()
-                print_input(AppState.current_input, AppState.input_buffer)
-                return False
-                
-        elif symbol == _KEY_MAP['D']:
-            if AppState.current_input == "s":
-                AppState.current_input = "s d"
-                AppState.input_buffer = ""
-                print_help()
-                print_rule()
-                print_input(AppState.current_input, AppState.input_buffer)
-                return False
-                
-        elif symbol == _KEY_MAP['B']:
-            if AppState.current_input == "r":
+        
+        # Меню правил (r -> ...)
+        elif AppState.current_input == "r":
+            if symbol == _KEY_MAP['B']:
                 AppState.current_input = "r b"
                 AppState.input_buffer = ""
                 print_help()
                 print_rule()
                 print_input(AppState.current_input, AppState.input_buffer)
                 return False
-                
-        elif symbol == _KEY_MAP['N']:
-            if AppState.current_input == "r p":
-                AppState.preset_index += 1
-                if AppState.preset_index > preset_count:
-                    AppState.preset_index = 1
-                set_rule_from_preset(AppState.preset_index)
+            elif symbol == _KEY_MAP['S']:
+                AppState.current_input = "r s"
+                AppState.input_buffer = ""
                 print_help()
-                print_preset_info(AppState.preset_index, preset[AppState.preset_index]['name'], "Switched to next")
                 print_rule()
                 print_input(AppState.current_input, AppState.input_buffer)
                 return False
-            if AppState.current_input == "s r":
+            elif symbol == _KEY_MAP['P']:
+                AppState.current_input = "r p"
+                AppState.input_buffer = ""
+                print_help()
+                print_rule()
+                print_input(AppState.current_input, AppState.input_buffer)
+                return False
+        
+        # Меню настроек (s -> ...)
+        elif AppState.current_input == "s":
+            if symbol == _KEY_MAP['F']:
+                AppState.current_input = "s f"
+                AppState.input_buffer = ""
+                print_help()
+                print_settings(AppState.target_fps, AppState.vsync_enabled, 
+                             AppState.cell_size, AppState.random_density)
+                print_input(AppState.current_input, AppState.input_buffer)
+                return False
+            elif symbol == _KEY_MAP['Z']:
+                AppState.current_input = "s z"
+                AppState.input_buffer = ""
+                print_help()
+                print_settings(AppState.target_fps, AppState.vsync_enabled, 
+                             AppState.cell_size, AppState.random_density)
+                print_input(AppState.current_input, AppState.input_buffer)
+                return False
+            elif symbol == _KEY_MAP['D']:
+                AppState.current_input = "s d"
+                AppState.input_buffer = ""
+                print_help()
+                print_settings(AppState.target_fps, AppState.vsync_enabled, 
+                             AppState.cell_size, AppState.random_density)
+                print_input(AppState.current_input, AppState.input_buffer)
+                return False
+            elif symbol == _KEY_MAP['R']:  # <-- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: R в меню s
+                AppState.current_input = "s r"
+                AppState.input_buffer = ""
+                print_help()
+                print_settings(AppState.target_fps, AppState.vsync_enabled, 
+                             AppState.cell_size, AppState.random_density)
+                print_input(AppState.current_input, AppState.input_buffer)
+                return False
+            elif symbol == _KEY_MAP['U']:
+                AppState.ui_visible = not AppState.ui_visible
+                print_message(f"UI {'shown' if AppState.ui_visible else 'hidden'}")
+                print_help()
+                print_input(AppState.current_input, AppState.input_buffer)
+                return "ui_toggle"
+        
+        # Меню рендера (s r -> ...)
+        elif AppState.current_input == "s r":
+            if symbol == _KEY_MAP['A']:
+                AppState.current_input = "s r a"
+                AppState.input_buffer = ""
+                print_help()
+                print_input(AppState.current_input, AppState.input_buffer)
+                return False
+            elif symbol == _KEY_MAP['N']:
                 AppState.current_input = "s r n"
+                AppState.input_buffer = ""
                 print_help()
                 print_input(AppState.current_input, AppState.input_buffer)
                 return False
         
-        elif symbol == _KEY_MAP['U']:
-            if AppState.current_input == "s":
-                AppState.toggle_ui_visibility()
-                print_message("ui visible toggled")
-                return "changed ui visible"
-
-        # Numeric input
+        # Переключение пресетов (r p -> n/p)
+        elif AppState.current_input == "r p":
+            if symbol == _KEY_MAP['N']:
+                # Следующий пресет
+                preset_count = RuleManager.get_preset_count()
+                AppState.preset_index = (AppState.preset_index % preset_count) + 1
+                success = RuleManager.load_preset(AppState.preset_index)
+                if success:
+                    print_help()
+                    preset = RuleManager.get_preset(AppState.preset_index)
+                    print_preset_info(AppState.preset_index, preset.name, action="Next preset")
+                    print_rule()
+                    print_input(AppState.current_input, AppState.input_buffer)
+                return False
+            elif symbol == _KEY_MAP['P']:
+                # Предыдущий пресет
+                preset_count = RuleManager.get_preset_count()
+                new_index = AppState.preset_index - 1
+                if new_index < 1:
+                    new_index = preset_count
+                AppState.preset_index = new_index
+                success = RuleManager.load_preset(AppState.preset_index)
+                if success:
+                    print_help()
+                    preset = RuleManager.get_preset(AppState.preset_index)
+                    print_preset_info(AppState.preset_index, preset.name, action="Previous preset")
+                    print_rule()
+                    print_input(AppState.current_input, AppState.input_buffer)
+                return False
+    
+    # SHIFT комбинации для альтернативного входа в подменю
+    if modifiers & _MODIFIERS['SHIFT']:
+        if not AppState.current_input:
+            # Основное меню с SHIFT
+            return False
+        elif AppState.current_input == "r":
+            if symbol == _KEY_MAP['B']:
+                AppState.current_input = "r b"
+                AppState.input_buffer = ""
+                print_help()
+                print_rule()
+                print_input(AppState.current_input, AppState.input_buffer)
+                return False
+            elif symbol == _KEY_MAP['S']:
+                AppState.current_input = "r s"
+                AppState.input_buffer = ""
+                print_help()
+                print_rule()
+                print_input(AppState.current_input, AppState.input_buffer)
+                return False
+            elif symbol == _KEY_MAP['P']:
+                AppState.current_input = "r p"
+                AppState.input_buffer = ""
+                print_help()
+                print_rule()
+                print_input(AppState.current_input, AppState.input_buffer)
+                return False
+    
+    # Numeric input без SHIFT (для цифр 0-9)
+    if modifiers == 0 and symbol in _NUMBERS:
         numeric_result = process_numeric_input(symbol)
         if numeric_result is not None:
-            if numeric_result is not None and numeric_result != False:
-                return _handle_numeric_result(numeric_result)
-            
-        # Multi-digit input update
-        if symbol in _NUMBERS or symbol == _KEY_MAP['PERIOD']:
-            if AppState.current_input in ["s f", "s z", "s d", "r p"]:
-                return False
-
-        # Back navigation
-        if symbol == _KEY_MAP['LEFT']:
-            if handle_back_navigation(symbol):
-                return False
-        
-        print_help()
-        print_input(AppState.current_input, AppState.input_buffer)
+            return _handle_numeric_result(numeric_result)
     
     return False
 
@@ -550,7 +496,7 @@ def _handle_shortcut_result(result):
         AppState.window.set_fullscreen(not AppState.window.fullscreen)
         return result
     elif result == 'vsync_changed' and AppState.window:
-        AppState.window.set_vsync(not AppState.window.vsync)
+        AppState.window.set_vsync(AppState.vsync_enabled)
         return result
     elif result == 'fps_changed' and _callbacks['update_fps_settings']:
         _callbacks['update_fps_settings']()
@@ -560,6 +506,9 @@ def _handle_shortcut_result(result):
         return result
     elif result == 'next_frame':
         AppState.single_step = True
+        return result
+    elif result == 'ui_toggle':
+        # UI visibility toggled
         return result
     
     return result
@@ -574,31 +523,23 @@ def _handle_numeric_result(result):
         _callbacks['create_pattern'](pattern_type)
         return result
     elif result == "mode1" and _callbacks['resize_grid_fast']:
-        _callbacks['resize_grid_fast'](AppState.window_width, AppState.window_height, 
-                                      mode1=AppState.render_mode_active)
+        _callbacks['resize_grid_fast'](
+            int(AppState.window_width / AppState.cell_size),
+            int(AppState.window_height / AppState.cell_size),
+            mode1=AppState.render_mode_active,
+            mode2=AppState.render_mode_inactive
+        )
         return result
     elif result == "mode2" and _callbacks['resize_grid_fast']:
-        _callbacks['resize_grid_fast'](AppState.window_width, AppState.window_height, 
-                                      mode2=AppState.render_mode_inactive)
+        _callbacks['resize_grid_fast'](
+            int(AppState.window_width / AppState.cell_size),
+            int(AppState.window_height / AppState.cell_size),
+            mode1=AppState.render_mode_active,
+            mode2=AppState.render_mode_inactive
+        )
         return result
     
     return result
-
-# ------------------------------------------------------------------------------
-# MOUSE HANDLERS
-# ------------------------------------------------------------------------------
-
-def on_mouse_press(x, y, button, modifiers):
-    return False
-
-def on_mouse_release(x, y, button, modifiers):
-    return False
-
-def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
-    return False
-
-def on_mouse_scroll(x, y, scroll_x, scroll_y):
-    return False
 
 def get_settings():
     """Get current settings (for backward compatibility)"""

@@ -2,12 +2,11 @@
 import numpy as np
 import colorsys
 from app_state import AppState
+from rules import RuleManager  # Изменено с rule_manager на RuleManager
 
 # Глобальные переменные КА
-neighbors = None
 grid = None
 grid_infor = None
-paused = False
 generation = 0
 rule_s, rule_b = None, None
 palitra_size = 15
@@ -36,14 +35,13 @@ def init_grid(width, height, mode1=0, mode2=0):
     prev_mode1 = mode1
 
 def update_grid_ultra_fast(is_update_rule, mode1=0, mode2=0):
-    global grid, generation, neighbors, rule_s, rule_b, grid_infor, prev_mode1
+    global grid, generation, grid_infor, prev_mode1, rule_b, rule_s
 
     if is_update_rule:
-        from config import get_rules
-        rule_b, rule_s = get_rules()
-        rule_b = np.array(rule_b, dtype=bool)
-        rule_s = np.array(rule_s, dtype=bool)
+        # Получаем правила из RuleManager
+        rule_b, rule_s = RuleManager.get_rules_binary()  # Изменено
 
+    # Вычисляем количество соседей
     neighbors = (
         np.roll(np.roll(grid, 1, 0), 1, 1) +
         np.roll(grid, 1, 0) +
@@ -54,16 +52,17 @@ def update_grid_ultra_fast(is_update_rule, mode1=0, mode2=0):
         np.roll(grid, -1, 0) +
         np.roll(np.roll(grid, -1, 0), 1, 1)
     )
-
-    new_grid = np.where((grid == 0) & (rule_b[neighbors]) | (grid == 1) & (rule_s[neighbors]), 1, 0).astype(np.uint8)
     
-    born_cells = (grid == 0) & (new_grid == 1)
-    alive_cells = new_grid == 1
-
-    if (mode1 != 0 or mode2 != 0) and grid_infor is None:
-        grid_infor = np.zeros((3, grid.shape[0], grid.shape[1]), dtype=np.uint8)
+    # Вычисляем новое состояние для всех 
+    new_grid = None
+    
+    if (mode1 != 0 or mode2 != 0):
+        new_grid = np.where((grid == 0) & (rule_b[neighbors]) | (grid == 1) & (rule_s[neighbors]), 1, 0).astype(np.uint8)
+        if grid_infor is None:
+            grid_infor = np.zeros((3, grid.shape[0], grid.shape[1]), dtype=np.uint8)
 
     if mode1 != 0 and grid_infor is not None:
+        alive_cells = (grid) & (new_grid)
         if prev_mode1 == 0 and mode1 != 0 and np.any(alive_cells):
             grid_infor[0, alive_cells] = 255
             grid_infor[1, alive_cells] = 255  
@@ -92,12 +91,16 @@ def update_grid_ultra_fast(is_update_rule, mode1=0, mode2=0):
         if mode2 == 0 and grid_infor is not None:
             grid_infor[:, new_grid==0] = 0
 
+    if not mode1 and not mode2:
+        grid = np.where((grid == 0) & (rule_b[neighbors]) | (grid == 1) & (rule_s[neighbors]), 1, 0).astype(np.uint8)
+    else:
+        grid = new_grid
+
     prev_mode1 = mode1
-    grid = new_grid
     generation += 1
 
 def resize_grid_fast(new_width, new_height, mode1=0, mode2=0):
-    global grid, neighbors, grid_infor, prev_mode1
+    global grid, grid_infor, prev_mode1
     if grid is None:
         grid = np.zeros((new_width, new_height), dtype=np.uint8)
         if mode1 != 0 or mode2 != 0:
@@ -117,7 +120,6 @@ def resize_grid_fast(new_width, new_height, mode1=0, mode2=0):
     
     new_grid[:min_w, :min_h] = old_grid[:min_w, :min_h]
     grid = new_grid
-    neighbors = np.zeros_like(grid)
     
     if mode1 != 0 or mode2 != 0:
         grid_infor = np.zeros((3, new_width, new_height), dtype=np.uint8)

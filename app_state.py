@@ -1,12 +1,10 @@
 # app_state.py
 """
-Класс для хранения глобального состояния приложения.
-Простая реализация с атрибутами класса для обратной совместимости.
+Глобальное состояние приложения.
+Теперь включает индекс пресета.
 """
 
 class AppState:
-    """Статический класс для хранения глобального состояния приложения"""
-    
     # Основные настройки
     target_fps = 0
     vsync_enabled = False
@@ -21,7 +19,7 @@ class AppState:
     # Состояния ввода
     current_input = ""
     input_buffer = ""
-    preset_index = 0
+    preset_index = 1  # Начинаем с пресета 1 (Game of Life)
     
     # Состояния приложения
     single_step = False
@@ -36,12 +34,10 @@ class AppState:
     
     @classmethod
     def init_window(cls, window):
-        """Инициализировать ссылку на окно"""
         cls.window = window
     
     @classmethod
     def update_window_size(cls, width, height):
-        """Обновить размеры окна"""
         cls.window_width = width
         cls.window_height = height
         cls.grid_width = int(width / cls.cell_size)
@@ -49,25 +45,21 @@ class AppState:
     
     @classmethod
     def reset_input(cls):
-        """Сбросить состояние ввода"""
         cls.current_input = ""
         cls.input_buffer = ""
     
     @classmethod
     def toggle_ui_visibility(cls):
-        """Переключить видимость UI"""
         cls.ui_visible = not cls.ui_visible
         return cls.ui_visible
     
     @classmethod
     def toggle_pause(cls):
-        """Переключить состояние паузы"""
         cls.paused = not cls.paused
         return cls.paused
     
     @classmethod
     def get_all_settings(cls):
-        """Получить все настройки в виде словаря"""
         return {
             'target_fps': cls.target_fps,
             'vsync_enabled': cls.vsync_enabled,
@@ -75,5 +67,6 @@ class AppState:
             'random_density': cls.random_density,
             'render_mode_active': cls.render_mode_active,
             'render_mode_inactive': cls.render_mode_inactive,
-            'ui_visible': cls.ui_visible
+            'ui_visible': cls.ui_visible,
+            'preset_index': cls.preset_index
         }

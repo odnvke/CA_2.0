@@ -54,37 +54,48 @@ def gaide():
 
 def print_rule_s():
     """Print survival rule"""
-    from config import _RULE_S
-    for i in range(len(_RULE_S)):
-        if _RULE_S[i]:
+    from rules import RuleManager
+    rules = RuleManager.get_current_rules()
+    rule_length = RuleManager.get_rule_length()  # Исправлено
+    for i in range(rule_length):
+        if rules.survival[i]:
             print(i, end=" ")
+    print()
 
 
 def print_rule_b():
     """Print birth rule"""
-    from config import _RULE_B
-    for i in range(len(_RULE_B)):
-        if _RULE_B[i]:
+    from rules import RuleManager
+    rules = RuleManager.get_current_rules()
+    rule_length = RuleManager.get_rule_length()  # Исправлено
+    for i in range(rule_length):
+        if rules.birth[i]:
             print(i, end=" ")
+    print()
 
 
 def print_rule():
     """Print current rule with visualization"""
-    from config import _RULE_B, _RULE_S
-    s_s = ""
+    from rules import RuleManager
+    rules = RuleManager.get_current_rules()
+    rule_length = RuleManager.get_rule_length()  # Исправлено
+    
     b_s = ""
-    for i in range(0, 9):
-        if _RULE_B[i]:
+    s_s = ""
+    
+    for i in range(rule_length):  # Исправлено
+        if rules.birth[i]:
             b_s += "█"
         else: 
             b_s += " "
-        if _RULE_S[i]:
+        
+        if rules.survival[i]:
             s_s += "█"
         else: 
             s_s += " "
-        
+    
     print(f"""
-rule:
+rule: ({rules.name})
            012345678
   birth:   {b_s}
   survival:{s_s}

@@ -9,8 +9,8 @@ from ui_prints import gaide
 from cellular_automata import init_grid, update_grid_ultra_fast, clear_grid, random_grid, toggle_pause, get_grid_info, resize_grid_fast, create_pattern
 from renderer import draw_grid, cleanup_texture
 from ui_manager import init_ui, update_ui, draw_ui
-from config import get_rule_upd, set_relu_upd_false
 from app_state import AppState
+from rules import RuleManager  # Изменено с rule_manager на RuleManager
 
 # Глобальные переменные приложения
 window = None
@@ -119,6 +119,7 @@ def update_fps_settings():
     else:
         pyglet.clock.schedule(update)
 
+
 def update(dt):
     """Основной игровой цикл"""
     if AppState.ui_visible:
@@ -131,9 +132,9 @@ def update(dt):
     
     if should_update_grid:
         grid_start = start_timing()
-        update_grid_ultra_fast(get_rule_upd(), 
+        update_grid_ultra_fast(RuleManager.is_updated(),  # Изменено
                               AppState.render_mode_active, AppState.render_mode_inactive)
-        set_relu_upd_false()
+        RuleManager.mark_updated()  # Изменено
         set_timing('grid', end_timing(grid_start))
         AppState.single_step = False
 

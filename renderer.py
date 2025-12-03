@@ -19,15 +19,14 @@ def draw_grid(mode=0):
         grid_shape = grid.shape  # (width, height)
     else:
         grid_info = get_grid_infor()
-        current_grid = grid_info
         if grid_info is None:
             grid = get_grid()
             current_grid = grid
             grid_shape = grid.shape
             mode = 0
         else:
-            # grid_info имеет форму (3, height, width) = (3, 1107, 948)
-            # Используем те же размеры, что и для обычной сетки
+            current_grid = grid_info
+            # Получаем размеры из обычной сетки
             grid = get_grid()
             grid_shape = grid.shape  # (width, height)
 
@@ -58,11 +57,9 @@ def _get_grid_hash(grid, mode):
 
 def _init_texture(width, height):
     global texture, sprite
-    # Используем AppState вместо импорта из input_manager
     from app_state import AppState
     
-    # Получаем cell_size из AppState - ПРАВИЛЬНЫЙ СПОСОБ
-    cell_size = AppState.cell_size  # Используем напрямую атрибут класса
+    cell_size = AppState.cell_size
 
     if texture is not None:
         texture.delete()
