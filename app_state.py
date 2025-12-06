@@ -6,14 +6,14 @@
 
 class AppState:
     # Основные настройки
-    target_fps = 0
+    target_fps = 20
     vsync_enabled = False
-    cell_size = 1
+    cell_size =3
     random_density = 30
     ui_visible = True
     
     # Режимы рендеринга
-    render_mode_active = 0
+    render_mode_active = 4
     render_mode_inactive = 0
     
     # Состояния ввода
@@ -28,6 +28,7 @@ class AppState:
     window_height = 800
     grid_width = 0
     grid_height = 0
+    force_redraw = False
     
     # Ссылка на главное окно
     window = None

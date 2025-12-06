@@ -12,6 +12,10 @@ last_mode = -1
 
 def draw_grid(mode=0):
     global texture, sprite, last_grid_hash, image_data_cache, current_grid_size, last_mode
+    from app_state import AppState
+
+    if AppState.force_redraw:
+        force_redraw()
 
     if mode == 0:
         grid = get_grid()

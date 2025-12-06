@@ -66,8 +66,10 @@ def process_global_shortcut(symbol, modifiers):
     # CTRL комбинации
     if modifiers & _MODIFIERS['CTRL']:
         if symbol == _KEY_MAP['R']:
+            AppState.force_redraw = True
             return 'reset'
         elif symbol == _KEY_MAP['C']:
+            AppState.force_redraw = True
             return 'clear'
         elif symbol == _KEY_MAP['F']:
             return 'toggle_fullscreen'
@@ -105,7 +107,7 @@ def handle_enter_key():
  
     elif AppState.current_input == "s z" and AppState.input_buffer:
         try:
-            AppState.cell_size = max(0.1, float(AppState.input_buffer))
+            AppState.cell_size = max(0.01, float(AppState.input_buffer))
             AppState.input_buffer = ""
             print_message(f"Cell size set to {AppState.cell_size} pixels")
             return 'cell_size_changed'
@@ -179,7 +181,7 @@ def process_numeric_input(symbol):
 
         # Render modes
         elif AppState.current_input == "s r a":
-            AppState.render_mode_active = max(min(num, 2), 0)
+            AppState.render_mode_active = max(min(num, 5), 0)
             print_help()
             print_input(AppState.current_input, AppState.input_buffer)
             print_message(f"set render mode for active:{AppState.render_mode_active}")
@@ -195,6 +197,7 @@ def process_numeric_input(symbol):
         # Start patterns
         elif AppState.current_input == "p":
             if num in [1, 2, 3, 4, 5]:
+                AppState.force_redraw = True
                 return f'pattern_{num}'
             else:
                 print_error(f"Invalid pattern number: {num} (must be 1-5)")
@@ -474,7 +477,7 @@ def on_key_press(symbol, modifiers):
                 return False
     
     # Numeric input без SHIFT (для цифр 0-9)
-    if modifiers == 0 and symbol in _NUMBERS:
+    if modifiers == 0 and symbol in _NUMBERS or symbol == _KEY_MAP["PERIOD"]:
         numeric_result = process_numeric_input(symbol)
         if numeric_result is not None:
             return _handle_numeric_result(numeric_result)

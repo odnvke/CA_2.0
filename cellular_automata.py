@@ -9,20 +9,21 @@ grid = None
 grid_infor = None
 generation = 0
 rule_s, rule_b = None, None
-palitra_size = 15
+palitra_size = 25
+palitra_loop = 4
 prev_mode1 = 0
 
-def generate_uniform_brightness_palette(n_colors=20):
+def generate_uniform_brightness_palette(n_colors=15, n_loop=20):
     hues = np.linspace(0, 1, n_colors, endpoint=False)
     palette = []
-    
-    for hue in hues:
-        r, g, b = colorsys.hsv_to_rgb(hue, 1.0, 0.5)
-        palette.append([int(r*255), int(g*255), int(b*255)])
+    for i in range(n_loop):
+        for hue in hues:
+            r, g, b = colorsys.hsv_to_rgb(hue+(float(i)/float(n_loop)), 0.9, 0.9)
+            palette.append([int(r*255), int(g*255), int(b*255)])
     
     return np.array(palette)
 
-palitra = generate_uniform_brightness_palette(palitra_size)
+palitra = generate_uniform_brightness_palette(palitra_size, palitra_loop)
 
 def init_grid(width, height, mode1=0, mode2=0):
     global grid, generation, grid_infor, prev_mode1
@@ -62,36 +63,48 @@ def update_grid_ultra_fast(is_update_rule, mode1=0, mode2=0):
             grid_infor = np.zeros((3, grid.shape[0], grid.shape[1]), dtype=np.uint8)
 
     if mode1 != 0 and grid_infor is not None:
-        alive_cells = (grid) & (new_grid)
+        alive_cells = (grid == 1) & (new_grid == 1)
         if prev_mode1 == 0 and mode1 != 0 and np.any(alive_cells):
             grid_infor[0, alive_cells] = 255
-            grid_infor[1, alive_cells] = 255  
+            grid_infor[1, alive_cells] = 255
             grid_infor[2, alive_cells] = 255
 
-    if mode1 != 0 and grid_infor is not None:
         if mode1 == 1:
             #b
             grid_infor[0, (grid == 0) & (new_grid == 1)] = 255
-            
             #s
-            grid_infor[:, (grid == 1) & (new_grid == 1)] = 200
+            grid_infor[:, alive_cells] = 200
             
         if mode1 == 2:
             #s
-            grid_infor[:, (grid_infor[0, :] == 0) & (grid == 1) & (new_grid == 1)] = 0
+            born_cells = (grid == 0) & (new_grid == 1)
+            grid_infor[:, (grid_infor[0, :] == 0) & alive_cells] = 0
             grid_infor[:, (grid_infor[1, :] < 150)] = np.add(grid_infor[:, (grid_infor[1, :] < 150)], 5)
             grid_infor[:, (grid_infor[1, :] >= 150)] = np.add(np.clip(grid_infor[:, (grid_infor[1, :] >= 150)], 0, 254), 1)
             
             #b
-            grid_infor[0, (grid == 0) & (new_grid == 1)] = 0
-            grid_infor[1, (grid == 0) & (new_grid == 1)] = 50
-            grid_infor[2, (grid == 0) & (new_grid == 1)] = 255
-            grid_infor[0, (grid == 1) & (new_grid == 1)] = 255
-            
+            grid_infor[0, born_cells] = 0
+            grid_infor[1, born_cells] = 50
+            grid_infor[2, born_cells] = 255
+            grid_infor[0, alive_cells] = 255
+        
+        if mode1 == 3:
+            born_cells = (grid == 0) & (new_grid == 1)
+            grid_infor[0, born_cells] = np.random.randint(50, 256, grid.shape)[born_cells]
+            grid_infor[1, born_cells] = np.random.randint(50, 256, grid.shape)[born_cells]
+            grid_infor[2, born_cells] = np.random.randint(50, 256, grid.shape)[born_cells]
+
+        elif mode1 == 4:
+            born_cells = (grid == 0) & (new_grid == 1)
+            color = palitra[generation % (palitra_size*palitra_loop)]
+            grid_infor[0, born_cells] = color[0]
+            grid_infor[1, born_cells] = color[1]
+            grid_infor[2, born_cells] = color[2]
+
         if mode2 == 0 and grid_infor is not None:
             grid_infor[:, new_grid==0] = 0
 
-    if not mode1 and not mode2:
+    if (not mode1 != 0) and (not mode2 != 0):
         grid = np.where((grid == 0) & (rule_b[neighbors]) | (grid == 1) & (rule_s[neighbors]), 1, 0).astype(np.uint8)
     else:
         grid = new_grid
@@ -134,6 +147,9 @@ def resize_grid_fast(new_width, new_height, mode1=0, mode2=0):
 
 def clear_grid():
     global grid, generation, grid_infor
+    from app_state import AppState
+    AppState.force_redraw = True
+
     if grid is not None:
         grid.fill(0)
         if grid_infor is not None:
@@ -141,6 +157,8 @@ def clear_grid():
     generation = 0
 
 def random_grid(density=30):
+    from app_state import AppState
+    AppState.force_redraw = True
     global grid, generation
     if grid is not None:
         probability = max(0, min(100, density)) / 100.0
@@ -178,6 +196,9 @@ def get_grid_info():
 
 def create_pattern(pattern_type):
     global grid, generation
+    from app_state import AppState
+    AppState.force_redraw = True
+
     if grid is None:
         return
     
@@ -194,13 +215,15 @@ def create_pattern(pattern_type):
         grid[center_x, center_y-1:center_y+2] = 1
         grid[center_x-1:center_x+2, center_y] = 1
     elif pattern_type == 4:
+        grid[center_x-1:center_x+2, center_y-1:center_y+2] = 1
+    elif pattern_type == 10:
         grid[center_x, center_y+1] = 1
         grid[center_x+1, center_y+2] = 1
         grid[center_x+2, center_y:center_y+3] = 1
-    elif pattern_type == 5:
+    elif pattern_type == 10:
         grid[center_x, center_y:center_y+4] = 1
         grid[center_x+1, center_y+3] = 1
         grid[center_x+2, center_y+2] = 1
         grid[center_x+3, center_y:center_y+2] = 1
-    
+
     generation = 0
