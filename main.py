@@ -80,7 +80,7 @@ def on_draw():
     window.clear()
     
     render_start = start_timing()
-    render_mode = AppState.render_mode_active or AppState.render_mode_inactive
+    render_mode = AppState.render_mode_active != 0 or AppState.render_mode_inactive != 0
     draw_grid(render_mode)
     set_timing('render', end_timing(render_start))
 
@@ -132,9 +132,8 @@ def update(dt):
     
     if should_update_grid:
         grid_start = start_timing()
-        update_grid_ultra_fast(RuleManager.is_updated(),  # Изменено
+        update_grid_ultra_fast(RuleManager.is_updated(),  
                               AppState.render_mode_active, AppState.render_mode_inactive)
-        #RuleManager.mark_updated()  # Изменено
         set_timing('grid', end_timing(grid_start))
         AppState.single_step = False
 

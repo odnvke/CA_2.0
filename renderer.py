@@ -5,59 +5,45 @@ import numpy as np
 # Глобальные переменные рендеринга
 texture = None
 sprite = None
-last_grid_hash = None
 image_data_cache = None
 current_grid_size = (0, 0)
 last_mode = -1
 
 def draw_grid(mode=0):
-    global texture, sprite, last_grid_hash, image_data_cache, current_grid_size, last_mode
-    from app_state import AppState
+    global texture, sprite, image_data_cache, current_grid_size, last_mode
 
-    if AppState.force_redraw:
-        force_redraw()
-
-    if mode == 0:
-        grid = get_grid()
-        current_grid = grid
-        grid_shape = grid.shape  # (width, height)
-    else:
+    # Импортируем функции здесь, чтобы избежать циклических импортов
+    from cellular_automata import get_grid, get_grid_infor
+    
+    # Всегда получаем обычную сетку
+    grid = get_grid()
+    grid_shape = grid.shape  # (width, height)
+    
+    # Получаем цветную информацию если режим не 0
+    grid_info = None
+    if mode != 0:
         grid_info = get_grid_infor()
         if grid_info is None:
-            grid = get_grid()
-            current_grid = grid
-            grid_shape = grid.shape
             mode = 0
-        else:
-            current_grid = grid_info
-            # Получаем размеры из обычной сетки
-            grid = get_grid()
-            grid_shape = grid.shape  # (width, height)
 
     # Пересоздаем текстуру если размер сетки изменился или изменился режим
     if (texture is None or grid_shape != current_grid_size or mode != last_mode):
         _init_texture(grid_shape[0], grid_shape[1])  # width, height
         current_grid_size = grid_shape
-        last_grid_hash = None
         last_mode = mode
 
-    # Всегда обновляем текстуру в цветных режимах
-    if mode != 0:
+    # Обновляем текстуру в зависимости от режима
+    if mode != 0 and grid_info is not None:
         _update_texture_multicolor_fast(grid_info, mode)
     else:
-        current_hash = _get_grid_hash(current_grid, mode)
-        if current_hash != last_grid_hash:
-            _update_texture_binary(grid)
-            last_grid_hash = current_hash
+        _update_texture_binary(grid)
 
     if sprite:
         sprite.draw()
 
-def _get_grid_hash(grid, mode):
-    if mode == 0:
-        return id(grid)
-    else:
-        return hash(str(pyglet.clock.time()))
+def force_redraw():
+    # Простая реализация - ничего не делаем, так как теперь всегда обновляем
+    pass
 
 def _init_texture(width, height):
     global texture, sprite
@@ -78,9 +64,12 @@ def _init_texture(width, height):
 def _update_texture_binary(grid):
     global texture, image_data_cache
 
+    if grid is None:
+        return
+        
     width, height = grid.shape
 
-    if texture.width != width or texture.height != height:
+    if texture is None or texture.width != width or texture.height != height:
         _init_texture(width, height)
 
     if image_data_cache is None or image_data_cache.shape != (height, width):
@@ -95,15 +84,25 @@ def _update_texture_binary(grid):
 def _update_texture_multicolor_fast(grid_info, mode=1):
     global texture, image_data_cache
 
-    if grid_info is None or len(grid_info.shape) != 3 or grid_info.shape[0] != 3:
+    if grid_info is None:
+        # Если нет цветной информации, переключаемся на бинарный рендер
+        from cellular_automata import get_grid
+        grid = get_grid()
+        _update_texture_binary(grid)
+        return
+        
+    # Проверяем размеры grid_info
+    if len(grid_info.shape) != 3 or grid_info.shape[0] != 3:
+        from cellular_automata import get_grid
         grid = get_grid()
         _update_texture_binary(grid)
         return
 
+    from cellular_automata import get_grid
     grid = get_grid()
     width, height = grid.shape
 
-    if texture.width != width or texture.height != height:
+    if texture is None or texture.width != width or texture.height != height:
         _init_texture(width, height)
 
     # Создаем массив с правильной формой
@@ -111,33 +110,27 @@ def _update_texture_multicolor_fast(grid_info, mode=1):
         image_data_cache = np.zeros((height, width, 4), dtype=np.uint8)
     
     # Ключевое исправление: используем ТАКОЕ ЖЕ транспонирование как в бинарном режиме
-    image_data_cache[:, :, 0] = np.clip(grid_info[0].T, 0, 255).astype(np.uint8)  # R транспонирован
-    image_data_cache[:, :, 1] = np.clip(grid_info[1].T, 0, 255).astype(np.uint8)  # G транспонирован
-    image_data_cache[:, :, 2] = np.clip(grid_info[2].T, 0, 255).astype(np.uint8)  # B транспонирован
+    # Проверяем размеры grid_info[0] перед транспонированием
+    if grid_info[0].shape == (width, height):
+        image_data_cache[:, :, 0] = np.clip(grid_info[0].T, 0, 255).astype(np.uint8)  # R транспонирован
+        image_data_cache[:, :, 1] = np.clip(grid_info[1].T, 0, 255).astype(np.uint8)  # G транспонирован
+        image_data_cache[:, :, 2] = np.clip(grid_info[2].T, 0, 255).astype(np.uint8)  # B транспонирован
+    else:
+        # Если размеры не совпадают, используем бинарный рендер
+        _update_texture_binary(grid)
+        return
+        
     image_data_cache[:, :, 3] = 255  # Alpha
 
     image_data = pyglet.image.ImageData(width, height, 'RGBA', image_data_cache.tobytes())
     texture.blit_into(image_data, 0, 0, 0)
 
-def force_redraw():
-    global last_grid_hash
-    last_grid_hash = None
-
 def cleanup_texture():
-    global texture, sprite, last_grid_hash, image_data_cache, current_grid_size, last_mode
+    global texture, sprite, image_data_cache, current_grid_size, last_mode
     if texture is not None:
         texture.delete()
     texture = None
     sprite = None
-    last_grid_hash = None
     image_data_cache = None
     current_grid_size = (0, 0)
     last_mode = -1
-
-def get_grid():
-    from cellular_automata import get_grid
-    return get_grid()
-
-def get_grid_infor():
-    from cellular_automata import get_grid_infor
-    return get_grid_infor()

@@ -25,6 +25,15 @@ def generate_uniform_brightness_palette(n_colors=15, n_loop=20):
 
 palitra = generate_uniform_brightness_palette(palitra_size, palitra_loop)
 
+def fill_grid_infor():
+    global grid_infor
+    if grid_infor is not None:
+        alive_cells = (grid == 1)
+        grid_infor[0, alive_cells] = 255
+        grid_infor[1, alive_cells] = 255
+        grid_infor[2, alive_cells] = 255
+
+
 def init_grid(width, height, mode1=0, mode2=0):
     global grid, generation, grid_infor, prev_mode1
     grid = np.zeros((width, height), dtype=np.uint8)
@@ -35,32 +44,35 @@ def init_grid(width, height, mode1=0, mode2=0):
     generation = 0
     prev_mode1 = mode1
 
-def update_grid_ultra_fast(is_update_rule, mode1=0, mode2=0):
+def update_grid_ultra_fast(is_update_rule=False, mode1=0, mode2=0, is_calc=True, new_grid_isnotcalc=None):
     global grid, generation, grid_infor, prev_mode1, rule_b, rule_s
 
     if is_update_rule:
         # Получаем правила из RuleManager
         rule_b, rule_s = RuleManager.get_rules_binary()  # Изменено
 
-    # Вычисляем количество соседей
-    neighbors = (
-        np.roll(np.roll(grid, 1, 0), 1, 1) +
-        np.roll(grid, 1, 0) +
-        np.roll(np.roll(grid, 1, 0), -1, 1) +
-        np.roll(grid, -1, 1) +
-        np.roll(grid, 1, 1) +
-        np.roll(np.roll(grid, -1, 0), -1, 1) +
-        np.roll(grid, -1, 0) +
-        np.roll(np.roll(grid, -1, 0), 1, 1)
-    )
-    
-    # Вычисляем новое состояние для всех 
-    new_grid = None
-    
-    if (mode1 != 0 or mode2 != 0):
-        new_grid = np.where((grid == 0) & (rule_b[neighbors]) | (grid == 1) & (rule_s[neighbors]), 1, 0).astype(np.uint8)
-        if grid_infor is None:
-            grid_infor = np.zeros((3, grid.shape[0], grid.shape[1]), dtype=np.uint8)
+    if is_calc:
+        # Вычисляем количество соседей
+        neighbors = (
+            np.roll(np.roll(grid, 1, 0), 1, 1) +
+            np.roll(grid, 1, 0) +
+            np.roll(np.roll(grid, 1, 0), -1, 1) +
+            np.roll(grid, -1, 1) +
+            np.roll(grid, 1, 1) +
+            np.roll(np.roll(grid, -1, 0), -1, 1) +
+            np.roll(grid, -1, 0) +
+            np.roll(np.roll(grid, -1, 0), 1, 1)
+        )
+        
+        # Вычисляем новое состояние для всех 
+        new_grid = None
+        
+        if (mode1 != 0 or mode2 != 0):
+            new_grid = np.where((grid == 0) & (rule_b[neighbors]) | (grid == 1) & (rule_s[neighbors]), 1, 0).astype(np.uint8)
+            if grid_infor is None:
+                grid_infor = np.zeros((3, grid.shape[0], grid.shape[1]), dtype=np.uint8)
+    else: 
+        new_grid = new_grid_isnotcalc
 
     if mode1 != 0 and grid_infor is not None:
         alive_cells = (grid == 1) & (new_grid == 1)
@@ -95,6 +107,7 @@ def update_grid_ultra_fast(is_update_rule, mode1=0, mode2=0):
             grid_infor[2, born_cells] = np.random.randint(50, 256, grid.shape)[born_cells]
 
         elif mode1 == 4:
+            #print(np.any(new_grid == 1), np.any(grid == 1), )
             born_cells = (grid == 0) & (new_grid == 1)
             color = palitra[generation % (palitra_size*palitra_loop)]
             grid_infor[0, born_cells] = color[0]
@@ -104,8 +117,11 @@ def update_grid_ultra_fast(is_update_rule, mode1=0, mode2=0):
         if mode2 == 0 and grid_infor is not None:
             grid_infor[:, new_grid==0] = 0
 
-    if (not mode1 != 0) and (not mode2 != 0):
-        grid = np.where((grid == 0) & (rule_b[neighbors]) | (grid == 1) & (rule_s[neighbors]), 1, 0).astype(np.uint8)
+    if mode1 == 0 and mode2 == 0:
+        if is_calc:
+            grid = np.where((grid == 0) & (rule_b[neighbors]) | (grid == 1) & (rule_s[neighbors]), 1, 0).astype(np.uint8)
+        else:
+            grid = new_grid
     else:
         grid = new_grid
 
@@ -157,13 +173,16 @@ def clear_grid():
     generation = 0
 
 def random_grid(density=30):
+    clear_grid()
     from app_state import AppState
     AppState.force_redraw = True
     global grid, generation
+    new_grid = None
     if grid is not None:
         probability = max(0, min(100, density)) / 100.0
-        grid = (np.random.random(grid.shape) < probability).astype(np.uint8)
+        new_grid = (np.random.random(grid.shape) < probability).astype(np.uint8)
     generation = 0
+    update_grid_ultra_fast(is_calc=False, mode1=AppState.render_mode_active, mode2=AppState.render_mode_inactive, new_grid_isnotcalc=new_grid)
 
 def toggle_pause():
     """Переключить состояние паузы"""
@@ -202,28 +221,45 @@ def create_pattern(pattern_type):
     if grid is None:
         return
     
-    clear_grid()
+    # Сохраняем старую сетку ПЕРЕД очисткой
+    old_grid = grid.copy() if grid is not None else None
+    
+    # Очищаем
+    grid.fill(0)
+    if grid_infor is not None:
+        grid_infor.fill(0)
+    
+    # Создаем НОВУЮ сетку как копию
+    new_grid = np.zeros_like(grid)
     
     center_x = grid.shape[0] // 2
     center_y = grid.shape[1] // 2
     
     if pattern_type == 1:
-        grid[center_x, center_y] = 1
+        new_grid[center_x, center_y] = 1
     elif pattern_type == 2:
-        grid[center_x:center_x+2, center_y:center_y+2] = 1
+        new_grid[center_x:center_x+2, center_y:center_y+2] = 1
     elif pattern_type == 3:
-        grid[center_x, center_y-1:center_y+2] = 1
-        grid[center_x-1:center_x+2, center_y] = 1
+        new_grid[center_x, center_y-1:center_y+2] = 1
+        new_grid[center_x-1:center_x+2, center_y] = 1
     elif pattern_type == 4:
-        grid[center_x-1:center_x+2, center_y-1:center_y+2] = 1
+        new_grid[center_x-1:center_x+2, center_y-1:center_y+2] = 1
     elif pattern_type == 10:
-        grid[center_x, center_y+1] = 1
-        grid[center_x+1, center_y+2] = 1
-        grid[center_x+2, center_y:center_y+3] = 1
-    elif pattern_type == 10:
-        grid[center_x, center_y:center_y+4] = 1
-        grid[center_x+1, center_y+3] = 1
-        grid[center_x+2, center_y+2] = 1
-        grid[center_x+3, center_y:center_y+2] = 1
+        new_grid[center_x, center_y+1] = 1
+        new_grid[center_x+1, center_y+2] = 1
+        new_grid[center_x+2, center_y:center_y+3] = 1
+    elif pattern_type == 10:  # <-- ДУБЛИКАТ! Должно быть 11?
+        new_grid[center_x, center_y:center_y+4] = 1
+        new_grid[center_x+1, center_y+3] = 1
+        new_grid[center_x+2, center_y+2] = 1
+        new_grid[center_x+3, center_y:center_y+2] = 1
 
     generation = 0
+    
+    # Обновляем с правильной логикой
+    update_grid_ultra_fast(
+        is_calc=False, 
+        mode1=AppState.render_mode_active,
+        mode2=AppState.render_mode_inactive, 
+        new_grid_isnotcalc=new_grid
+    )
