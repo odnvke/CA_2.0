@@ -546,7 +546,7 @@ def draw_line_with_thickness(grid, x1, y1, x2, y2, thickness):
             y1 += sy
 
 
-def create_patterns_param(type=0, param=1, param2=1, grid=None):
+def create_patterns_param(type=1, param=1, param2=1, grid=None):
     """
     Генерация параметрических паттернов в матрице
     
@@ -609,9 +609,59 @@ def create_patterns_param(type=0, param=1, param2=1, grid=None):
                             y = cy + (j - w//2) * scale + sj
                             if 0 <= x < grid.shape[0] and 0 <= y < grid.shape[1]:
                                 grid[x, y] = 1
-    
-    # 0. КРЕСТ (вертикальный + горизонтальный)
+
+    # 7. РОМБ (повернутый на 45° квадрат)
     if type == 0:
+        # param - размер (длина полудиагонали от центра до вершины)
+        # param2 - толщина линий (1 = заполненный, >1 = только контур указанной толщины)
+        
+        size = param
+        thickness = max(1, param2)
+        
+        # Для ромба (повернутого квадрата) используем формулу |x| + |y| ≤ size
+        # где |x| и |y| - расстояния от центра по осям
+        
+        if thickness == 1:  # Заполненный ромб
+            for i in range(height):
+                for j in range(width):
+                    dx = abs(i - center_x)
+                    dy = abs(j - center_y)
+                    if dx + dy <= size:
+                        new_grid[i, j] = 1
+        else:  # Только контур ромба с нормальной толщиной
+            # Рисуем 4 стороны ромба отдельно с заданной толщиной
+            
+            # Верхняя сторона (от (-size, 0) до (0, size) через центр)
+            for t in range(thickness):
+                offset = t - thickness // 2
+                for k in range(-size, size + 1):
+                    i = center_x + k
+                    j = center_y + (size - abs(k)) + offset
+                    if 0 <= i < height and 0 <= j < width:
+                        new_grid[i, j] = 1
+            
+            # Нижняя сторона (от (0, -size) до (size, 0) через центр)
+            for t in range(thickness):
+                offset = t - thickness // 2
+                for k in range(-size, size + 1):
+                    i = center_x + k
+                    j = center_y - (size - abs(k)) + offset
+                    if 0 <= i < height and 0 <= j < width:
+                        new_grid[i, j] = 1
+            
+            # Альтернативный способ: более равномерное рисование границ
+            for i in range(height):
+                for j in range(width):
+                    dx = abs(i - center_x)
+                    dy = abs(j - center_y)
+                    distance = dx + dy
+                    # Проверяем, находится ли точка вблизи границы ромба
+                    # с учетом толщины
+                    if size - thickness <= distance <= size + thickness:
+                        new_grid[i, j] = 1
+
+    # 0. КРЕСТ (вертикальный + горизонтальный)
+    elif type == 1:
         # param - длина лучей от центра
         length = param
         
@@ -626,7 +676,7 @@ def create_patterns_param(type=0, param=1, param2=1, grid=None):
                 new_grid[center_x, j] = 1
     
     # 1. ПРЯМОУГОЛЬНИК/КВАДРАТ
-    elif type == 1:
+    elif type == 2:
         # param - размер стороны квадрата
         # param2 - толщина стенок (если 1 - заполненный, если >1 - только контур)
         
@@ -659,7 +709,7 @@ def create_patterns_param(type=0, param=1, param2=1, grid=None):
                     new_grid[x_start:x_end, y_end - 1 - t] = 1
     
     # 2. КРУГ/ОКРУЖНОСТЬ
-    elif type == 2:
+    elif type == 3:
         # param - радиус круга
         # param2 - толщина (1 - заполненный круг, >1 - кольцо)
         
@@ -678,7 +728,7 @@ def create_patterns_param(type=0, param=1, param2=1, grid=None):
                         new_grid[i, j] = 1
     
     # 3. ДИАГОНАЛЬНЫЙ КРЕСТ (X)
-    elif type == 3:
+    elif type == 4:
         # param - длина лучей (от центра до конца)
         length = param
         
@@ -695,27 +745,6 @@ def create_patterns_param(type=0, param=1, param2=1, grid=None):
             j = center_y - k
             if 0 <= i < height and 0 <= j < width:
                 new_grid[i, j] = 1
-    
-    # 4. КОЛЬЦО/БУБЛИК
-    elif type == 4:
-        # param - внешний радиус
-        # param2 - внутренний радиус
-        
-        outer_radius = float(param)
-        inner_radius = float(param2)
-        
-        # Проверяем, чтобы внутренний радиус был меньше внешнего
-        if inner_radius >= outer_radius:
-            inner_radius = outer_radius - 1
-        
-        # Идем от -outer_radius до +outer_radius для симметрии
-        max_radius = int(math.ceil(outer_radius))
-        for i in range(center_x - max_radius, center_x + max_radius + 1):
-            for j in range(center_y - max_radius, center_y + max_radius + 1):
-                if 0 <= i < height and 0 <= j < width:
-                    distance = math.sqrt((i - center_x)**2 + (j - center_y)**2)
-                    if inner_radius <= distance <= outer_radius:
-                        new_grid[i, j] = 1
     
     # 5. ТРЕУГОЛЬНИК
     elif type == 5:
@@ -1335,8 +1364,8 @@ def create_patterns_param(type=0, param=1, param2=1, grid=None):
         # param - тип конфигурации (1-10)
         # param2 - размер/масштаб
         
-        config_type = min(10, max(1, param))
-        scale = max(1, param2)
+        config_type = min(10, max(1, param2))
+        scale = max(1, param)
         
         # Очищаем сетку
         new_grid = np.zeros_like(grid)
@@ -1449,7 +1478,6 @@ def create_patterns_param(type=0, param=1, param2=1, grid=None):
         pass
     
     # 22. ШУМ ПЕРЛИНА
-# 22. ШУМ ПЕРЛИНА (РАВНОМЕРНОЕ РАСПРЕДЕЛЕНИЕ)
     elif type == 22:
         # param: масштаб (1-100)
         # param2: сложность (1-10)
@@ -1459,13 +1487,9 @@ def create_patterns_param(type=0, param=1, param2=1, grid=None):
         
         # Определяем размеры из входной сетки
         height, width = grid.shape
-        
-        # Выбираем метод в зависимости от сложности
-        if width * height > 100000:  # Для больших сеток используем быструю версию
-            noise = perlin_noise_fast(height, width, scale=scale)
-        else:
-            octaves = min(4, complexity // 2 + 1)
-            noise = perlin_noise_simple(width, height, scale=scale, octaves=octaves)
+
+        octaves = complexity
+        noise = perlin_noise_simple(width, height, scale=scale, octaves=octaves)
         
         # noise уже в диапазоне [0,1]
         
@@ -1499,8 +1523,6 @@ def create_patterns_param(type=0, param=1, param2=1, grid=None):
         # Убедимся, что размеры совпадают
         if new_grid.shape != grid.shape:
             new_grid = new_grid[:grid.shape[0], :grid.shape[1]]
-        
-        return new_grid
     
     # 23. ТУРБУЛЕНТНЫЙ ШУМ
     elif type == 23:
