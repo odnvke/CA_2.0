@@ -114,6 +114,21 @@ def update_grid_ultra_fast(is_update_rule=False, mode1=0, mode2=0, is_calc=True,
             grid_infor[1, born_cells] = color[1]
             grid_infor[2, born_cells] = color[2]
 
+        elif mode1 == 5:
+            new_neighbors = (
+            np.roll(np.roll(new_grid, 1, 0), 1, 1) +
+            np.roll(new_grid, 1, 0) +
+            np.roll(np.roll(new_grid, 1, 0), -1, 1) +
+            np.roll(new_grid, -1, 1) +
+            np.roll(new_grid, 1, 1) +
+            np.roll(np.roll(new_grid, -1, 0), -1, 1) +
+            np.roll(new_grid, -1, 0) +
+            np.roll(np.roll(new_grid, -1, 0), 1, 1)
+            )
+            grid_infor[0, new_grid==1] = np.multiply(np.remainder(new_neighbors[new_grid==1], 2), 100) + 100
+            grid_infor[1, new_grid==1] = np.multiply(np.remainder(new_neighbors[new_grid==1], 4), 40) + 30
+            grid_infor[2, new_grid==1] = new_neighbors[new_grid==1]*30+10
+
         if mode2 == 0 and grid_infor is not None:
             grid_infor[:, new_grid==0] = 0
 
@@ -216,6 +231,7 @@ def get_grid_info():
 def create_pattern(pattern_type):
     global grid, generation
     from app_state import AppState
+    from patersns import create_patterns_param
     AppState.force_redraw = True
 
     if grid is None:
@@ -231,28 +247,8 @@ def create_pattern(pattern_type):
     
     # Создаем НОВУЮ сетку как копию
     new_grid = np.zeros_like(grid)
-    
-    center_x = grid.shape[0] // 2
-    center_y = grid.shape[1] // 2
-    
-    if pattern_type == 1:
-        new_grid[center_x, center_y] = 1
-    elif pattern_type == 2:
-        new_grid[center_x:center_x+2, center_y:center_y+2] = 1
-    elif pattern_type == 3:
-        new_grid[center_x, center_y-1:center_y+2] = 1
-        new_grid[center_x-1:center_x+2, center_y] = 1
-    elif pattern_type == 4:
-        new_grid[center_x-1:center_x+2, center_y-1:center_y+2] = 1
-    elif pattern_type == 10:
-        new_grid[center_x, center_y+1] = 1
-        new_grid[center_x+1, center_y+2] = 1
-        new_grid[center_x+2, center_y:center_y+3] = 1
-    elif pattern_type == 10:  # <-- ДУБЛИКАТ! Должно быть 11?
-        new_grid[center_x, center_y:center_y+4] = 1
-        new_grid[center_x+1, center_y+3] = 1
-        new_grid[center_x+2, center_y+2] = 1
-        new_grid[center_x+3, center_y:center_y+2] = 1
+
+    new_grid = create_patterns_param(AppState.patterns_type, AppState.patterns_size, AppState.patterns_second_value, grid)    
 
     generation = 0
     

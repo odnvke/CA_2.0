@@ -43,8 +43,13 @@ def gaide():
         [r] → [n] → [number]  -   Set mode of render non active cells
         [u]  -  Toggel show/hide user interface
 
-    [p] → [number]  -   Set state of grid
+    [p]  -   go to Patterns (state og grid)
 
+    In patterns menu:
+        [ENTER]  -   Apply current pattern 
+        [number] → [ENTER]  -   Set type (shape)
+        [s] → [number] → [ENTER]  -   Set Size
+        [v] → [number] → [ENTER]  -   Set Second Value
 
 
     [h]  -   Show this help
@@ -115,6 +120,15 @@ Current Settings:
   Random Density: {random_density}%
 """)
 
+def print_patterns(_type, size, value):
+    """Print current settings"""
+    print(f"""
+Current Patterns Settings:
+  Typy: {_type}
+  Size: {size}
+  Second Value: {value}
+""")
+
 
 def print_help():
     """Print input help prompt"""
@@ -151,8 +165,11 @@ def print_input(current_input, input_buffer, preset_index=None, preset_name=None
     elif current_input == "s d":
         print(f"enter:    [number] - set\n\n  =>  Settings:  Density Of Spawn:    {input_buffer} ", end="")
     elif current_input == "p":
-        print("enter:    [number] - set (1 (single), 2 (2x2), 3 (cross), 4 (glider), 5 (spaceship))\n\n  =>  Set State Of Grid:    ", end="")
-    
+        print(f"enter:    [ENTER] - Apply;   Options: [number] - Set Type,  [s] - Set Size,  [v] - Second Value\n\n  =>  Patterns:    {input_buffer}", end="")
+    elif current_input == "p s":
+        print(f"enter:    [number] - Set Size Of Patterns\n\n  =>  Patterns:  Size:    {input_buffer}", end="")
+    elif current_input == "p v":
+        print(f"enter:    [number] - Set Second Patterns Value\n\n  =>  Patterns:  Second Value:    {input_buffer}", end="")
     print()
 
 

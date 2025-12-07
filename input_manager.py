@@ -5,7 +5,7 @@ from app_state import AppState
 from ui_prints import (
     gaide, print_rule_s, print_rule_b, print_rule, 
     print_settings, print_help, print_input,
-    print_message, print_error, print_preset_info
+    print_message, print_error, print_preset_info, print_patterns
 )
 
 # Константы для клавиш
@@ -97,9 +97,11 @@ def handle_enter_key():
     """Process Enter key for confirming inputs"""
     if AppState.current_input == "s f" and AppState.input_buffer:
         try:
+            AppState.current_input = "s"
             AppState.target_fps = float(AppState.input_buffer)
             AppState.input_buffer = ""
             print_message(f"Target FPS set to {AppState.target_fps}")
+            print_input(AppState.current_input, AppState.input_buffer)
             return 'fps_changed'
         except ValueError:
             print_error("Invalid FPS value")
@@ -107,23 +109,58 @@ def handle_enter_key():
  
     elif AppState.current_input == "s z" and AppState.input_buffer:
         try:
+            AppState.current_input = "s"
             AppState.cell_size = max(0.01, float(AppState.input_buffer))
             AppState.input_buffer = ""
             print_message(f"Cell size set to {AppState.cell_size} pixels")
+            print_input(AppState.current_input, AppState.input_buffer)
             return 'cell_size_changed'
         except ValueError:
             print_error("Invalid cell size")
             AppState.reset_input()
-            
     elif AppState.current_input == "s d" and AppState.input_buffer:
         try:
+            AppState.current_input = "s"
             AppState.random_density = max(0, min(100, float(AppState.input_buffer)))
             AppState.input_buffer = ""
             print_message(f"Random density set to {AppState.random_density}%")
+            print_input(AppState.current_input, AppState.input_buffer)
         except ValueError:
             print_error("Invalid density value")
             AppState.reset_input()
-
+    elif AppState.current_input == "p":
+        if AppState.input_buffer:
+            try:
+                AppState.patterns_type = max(0, min(32, int(AppState.input_buffer)))
+                AppState.input_buffer = ""
+                print_message(f"Type Of Patterns  {AppState.patterns_type}")
+                print_input(AppState.current_input, AppState.input_buffer)
+            except ValueError:
+                print_error("Invalid Patterns value")
+                AppState.reset_input()
+        else: 
+            #print("Pattern Set")
+            return "pattern_" 
+    elif AppState.current_input == "p s" and AppState.input_buffer:
+        try:
+            AppState.patterns_size = max(-10000, min(10000, float(AppState.input_buffer)))
+            AppState.input_buffer = ""
+            AppState.current_input = "p"
+            print_message(f"Size Of Patterns  {AppState.patterns_size}\n")
+            print_input(AppState.current_input, AppState.input_buffer)
+        except ValueError:
+            print_error("Invalid Size Patterns value")
+            AppState.reset_input()
+    elif AppState.current_input == "p v" and AppState.input_buffer:
+        try:
+            AppState.current_input = "p"
+            AppState.patterns_second_value = max(-10000, min(10000, float(AppState.input_buffer)))
+            AppState.input_buffer = ""
+            print_message(f"Second Value Of Patterns  {AppState.patterns_second_value}")
+            print_input(AppState.current_input, AppState.input_buffer)
+        except ValueError:
+            print_error("Invalid Second Patterns value")
+            AppState.reset_input()
     elif AppState.current_input == "r p" and AppState.input_buffer:
         try:
             preset_index = int(AppState.input_buffer)
@@ -194,18 +231,10 @@ def process_numeric_input(symbol):
             print_message(f"set render mode for non active:{AppState.render_mode_inactive}")
             return "mode2"
 
-        # Start patterns
-        elif AppState.current_input == "p":
-            if num in [1, 2, 3, 4, 5]:
-                AppState.force_redraw = True
-                return f'pattern_{num}'
-            else:
-                print_error(f"Invalid pattern number: {num} (must be 1-5)")
-                return None
     
     # Multi-digit number input
     if symbol in _NUMBERS or symbol == _KEY_MAP['PERIOD']:
-        if AppState.current_input in ["s f", "s z", "s d", "r p"]:
+        if AppState.current_input in ["s f", "s z", "s d", "r p", "p s", "p v"]:
             if symbol in _NUMBERS:
                 AppState.input_buffer += str(_NUMBERS.index(symbol))
             elif symbol == _KEY_MAP['PERIOD']:
@@ -220,8 +249,19 @@ def process_numeric_input(symbol):
                 print_help()
                 print_rule()
                 print_input(AppState.current_input, AppState.input_buffer)
+            elif AppState.current_input in ["p s", "p v"]:
+                print_help()
+                print_patterns(AppState.patterns_type, AppState.patterns_size, AppState.patterns_second_value)
+                print_input(AppState.current_input, AppState.input_buffer)
             return None
-    
+
+                # Start patterns
+        elif AppState.current_input == "p":
+            AppState.input_buffer += str(_NUMBERS.index(symbol))
+            print_help()
+            print_patterns(AppState.patterns_type, AppState.patterns_size, AppState.patterns_second_value)
+            print_input(AppState.current_input, AppState.input_buffer)
+
     return None
 
 def handle_backspace():
@@ -246,6 +286,13 @@ def handle_left_arrow():
         AppState.reset_input()
         print_help()
         print("\n <= Back to menu")
+        print_input(AppState.current_input, AppState.input_buffer)
+        return True
+    if AppState.current_input in ["p s", "p v"]:
+        AppState.current_input = "p"
+        print_help()
+        print("\n <= Back to patterns menu")
+        print_patterns(AppState.patterns_type, AppState.patterns_size, AppState.patterns_second_value)
         print_input(AppState.current_input, AppState.input_buffer)
         return True
     elif AppState.current_input in ["r b", "r s"]:
@@ -335,6 +382,7 @@ def on_key_press(symbol, modifiers):
                 AppState.current_input = "p"
                 AppState.input_buffer = ""
                 print_help()
+                print_patterns(AppState.patterns_type, AppState.patterns_size, AppState.patterns_second_value)
                 print_input(AppState.current_input, AppState.input_buffer)
                 return False
         
@@ -447,7 +495,21 @@ def on_key_press(symbol, modifiers):
                     print_rule()
                     print_input(AppState.current_input, AppState.input_buffer)
                 return False
-    
+        elif AppState.current_input == "p":
+            if symbol == _KEY_MAP["S"]:
+                AppState.current_input = "p s"
+                print_help()
+                print_patterns(AppState.patterns_type, AppState.patterns_size, AppState.patterns_second_value)
+                print_input(AppState.current_input, AppState.input_buffer)
+                return False
+            if symbol == _KEY_MAP["V"]:
+                AppState.current_input = "p v"
+                print_help()
+                print_patterns(AppState.patterns_type, AppState.patterns_size, AppState.patterns_second_value)
+                print_input(AppState.current_input, AppState.input_buffer)
+                return False
+            
+
     # SHIFT комбинации для альтернативного входа в подменю
     if modifiers & _MODIFIERS['SHIFT']:
         if not AppState.current_input:
@@ -486,7 +548,10 @@ def on_key_press(symbol, modifiers):
 
 def _handle_shortcut_result(result):
     """Обработка результатов сочетаний клавиш"""
-    if result == 'reset' and _callbacks['random_grid']:
+    if isinstance(result, str) and result.startswith('pattern_') and _callbacks['create_pattern']:
+        _callbacks['create_pattern'](4)
+        return result
+    elif result == 'reset' and _callbacks['random_grid']:
         _callbacks['random_grid'](AppState.random_density)
         return result
     elif result == 'clear' and _callbacks['clear_grid']:
@@ -521,10 +586,6 @@ def _handle_numeric_result(result):
     if result is None:
         return None
     
-    if isinstance(result, str) and result.startswith('pattern_') and _callbacks['create_pattern']:
-        pattern_type = int(result.split('_')[1])
-        _callbacks['create_pattern'](pattern_type)
-        return result
     elif result == "mode1" and _callbacks['resize_grid_fast']:
         _callbacks['resize_grid_fast'](
             int(AppState.window_width / AppState.cell_size),

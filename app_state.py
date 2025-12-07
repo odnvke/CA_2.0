@@ -11,9 +11,12 @@ class AppState:
     cell_size =3
     random_density = 30
     ui_visible = True
-    
+    patterns_type = 1
+    patterns_size = 11.0
+    patterns_second_value = 1.0
+
     # Режимы рендеринга
-    render_mode_active = 4
+    render_mode_active = 5
     render_mode_inactive = 0
     
     # Состояния ввода
