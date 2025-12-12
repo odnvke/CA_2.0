@@ -1,58 +1,76 @@
 # ui_prints.py
 """
-Функции для отображения интерфейса, помощи и другой информации.
+Функции для отображения интерфейса.
 """
+
+import os
+import sys
+
+# Активируем ANSI цвета для Windows
+if sys.platform == "win32":
+    os.system("")
+
+class Colors:
+    # Минимальные цвета
+    TITLE = '\033[1;36m'      # Бирюзовый только для заголовков
+    INPUT = '\033[1;33m'      # Желтый только для ввода
+    ERROR = '\033[1;31m'      # Красный только для ошибок
+    RESET = '\033[0m'
+    WHITE = '\033[38;5;223m'      # Белый для дополнительных элементов
+    INP = '\033[1;38;5;214m'
+    # Правила - с белым цветом
+    BIRTH = ''     # Белый для birth
+    SURVIVAL = ''   # Белый для survival
+
+C = Colors()
+
 
 def gaide():
     """Display help information"""
-    print("""
+    print(f"""
+{C.TITLE}= HELP ={C.RESET}
 
+{C.WHITE}[CTRL + R]{C.RESET}  -   Random grid
+{C.WHITE}[CTRL + C]{C.RESET}  -   Clear
+{C.WHITE}[CTRL + F]{C.RESET}  -   FullScreen  
+{C.WHITE}[CTRL + V]{C.RESET}  -   Toggle VSync
 
+{C.WHITE}[SPACE]{C.RESET}  -   Toggle Pause and Play
+{C.WHITE}[RIGHT]{C.RESET}  -   Next frame (when paused)
 
-  ================================= HELP ================================= 
+{C.WHITE}[ESC]{C.RESET}  -   Exit
 
-    [CTRL + R]  -   Random grid
-    [CTRL + C]  -   Clear
-    [CTRL + F]  -   FullScreen  
-    [CTRL + V]  -   Toggle VSync
+{C.WHITE}[BACKSPACE]{C.RESET}  -  Clear input
+{C.WHITE}[ARROW LEFT]{C.RESET}  -  Back
 
-    [SPACE]  -   Toggle Pause and Play
-    [RIGHT]  -   Next frame (when paused)
+Commands:
+{C.WHITE}[r]{C.RESET}  -   go to Rule editing menu
 
-    [ESC]  -   Exit
+  In Rule menu:
+    {C.WHITE}[b]{C.RESET} → {C.WHITE}[number]{C.RESET}  -   Birth Rule toggle
+    {C.WHITE}[s]{C.RESET} → {C.WHITE}[number]{C.RESET}  -   Survival Rule toggle
+    {C.WHITE}[p]{C.RESET} → {C.WHITE}[n]{C.RESET}/{C.WHITE}[p]{C.RESET}  -   Next or prev preset
+    {C.WHITE}[p]{C.RESET} → {C.WHITE}[number]{C.RESET} → {C.WHITE}[ENTER]{C.RESET}  -   Select preset
 
-    [BACKSPACE]  -  Clear input
-    [ARROW LEFT]  -  Back
+{C.WHITE}[s]{C.RESET}  -   go to settings menu
 
-    Commands:
-    [r]  -   go to Rule editing menu
+  In setting menu:
+    {C.WHITE}[f]{C.RESET} → {C.WHITE}[number]{C.RESET} → {C.WHITE}[ENTER]{C.RESET}  -   Set FPS limit
+    {C.WHITE}[z]{C.RESET} → {C.WHITE}[number]{C.RESET} → {C.WHITE}[ENTER]{C.RESET}  -   Set cell size
+    {C.WHITE}[d]{C.RESET} → {C.WHITE}[number]{C.RESET} → {C.WHITE}[ENTER]{C.RESET}  -   Set density of spawn(ctrl + R)
+    {C.WHITE}[r]{C.RESET} → {C.WHITE}[a]{C.RESET} → {C.WHITE}[number]{C.RESET}  -   Set mode of render active cells
+    {C.WHITE}[r]{C.RESET} → {C.WHITE}[n]{C.RESET} → {C.WHITE}[number]{C.RESET}  -   Set mode of render non active cells
+    {C.WHITE}[u]{C.RESET}  -  Toggle show/hide user interface
 
-    In Rule menu:
-        [b] → [number]  -   Birth Rule toggle
-        [s] → [number]  -   Survival Rule toggle
-        [p] → [n]/[p]  -   Next or prev preset
-        [p] → [number] → [ENTER]  -   Select preset
+{C.WHITE}[p]{C.RESET}  -   go to Patterns (state og grid)
 
-    [s]  -   go to settings menu
+  In patterns menu:
+    {C.WHITE}[ENTER]{C.RESET}  -   Apply current pattern 
+    {C.WHITE}[number]{C.RESET} → {C.WHITE}[ENTER]{C.RESET}  -   Set type (shape)
+    {C.WHITE}[s]{C.RESET} → {C.WHITE}[number]{C.RESET} → {C.WHITE}[ENTER]{C.RESET}  -   Set Size
+    {C.WHITE}[v]{C.RESET} → {C.WHITE}[number]{C.RESET} → {C.WHITE}[ENTER]{C.RESET}  -   Set Second Value
 
-    In setting menu:
-        [f] → [number] → [ENTER]  -   Set FPS limit
-        [z] → [number] → [ENTER]  -   Set cell size
-        [d] → [number] → [ENTER]  -   Set density of spawn(ctrl + R)
-        [r] → [a] → [number]  -   Set mode of render active cells
-        [r] → [n] → [number]  -   Set mode of render non active cells
-        [u]  -  Toggel show/hide user interface
-
-    [p]  -   go to Patterns (state og grid)
-
-    In patterns menu:
-        [ENTER]  -   Apply current pattern 
-        [number] → [ENTER]  -   Set type (shape)
-        [s] → [number] → [ENTER]  -   Set Size
-        [v] → [number] → [ENTER]  -   Set Second Value
-
-
-    [h]  -   Show this help
+{C.WHITE}[h]{C.RESET}  -   Show this help
 
 """)
 
@@ -61,10 +79,11 @@ def print_rule_s():
     """Print survival rule"""
     from rules import RuleManager
     rules = RuleManager.get_current_rules()
-    rule_length = RuleManager.get_rule_length()  # Исправлено
+    rule_length = RuleManager.get_rule_length()
+    print(f"{C.SURVIVAL}Survival:{C.RESET} ", end="")
     for i in range(rule_length):
         if rules.survival[i]:
-            print(i, end=" ")
+            print(f"{C.WHITE}{i}{C.RESET}", end=" ")
     print()
 
 
@@ -72,10 +91,11 @@ def print_rule_b():
     """Print birth rule"""
     from rules import RuleManager
     rules = RuleManager.get_current_rules()
-    rule_length = RuleManager.get_rule_length()  # Исправлено
+    rule_length = RuleManager.get_rule_length()
+    print(f"{C.BIRTH}Birth:{C.RESET} ", end="")
     for i in range(rule_length):
         if rules.birth[i]:
-            print(i, end=" ")
+            print(f"{C.WHITE}{i}{C.RESET}", end=" ")
     print()
 
 
@@ -83,27 +103,27 @@ def print_rule():
     """Print current rule with visualization"""
     from rules import RuleManager
     rules = RuleManager.get_current_rules()
-    rule_length = RuleManager.get_rule_length()  # Исправлено
+    rule_length = RuleManager.get_rule_length()
     
     b_s = ""
     s_s = ""
     
-    for i in range(rule_length):  # Исправлено
+    for i in range(rule_length):
         if rules.birth[i]:
-            b_s += "█"
+            b_s += f"{C.WHITE}█{C.RESET}"
         else: 
-            b_s += " "
+            b_s += f"{C.WHITE} {C.RESET}"
         
         if rules.survival[i]:
-            s_s += "█"
+            s_s += f"{C.WHITE}█{C.RESET}"
         else: 
-            s_s += " "
+            s_s += f"{C.WHITE} {C.RESET}"
     
     print(f"""
 rule: ({rules.name})
            012345678
-  birth:   {b_s}
-  survival:{s_s}
+  {C.BIRTH}birth:{C.RESET}   {b_s}
+  {C.SURVIVAL}survival:{C.RESET}{s_s}
 """)
 
 
@@ -120,11 +140,12 @@ Current Settings:
   Random Density: {random_density}%
 """)
 
+
 def print_patterns(_type, size, value):
     """Print current settings"""
     print(f"""
 Current Patterns Settings:
-  Typy: {_type}
+  Type: {_type}
   Size: {size}
   Second Value: {value}
 """)
@@ -132,7 +153,7 @@ Current Patterns Settings:
 
 def print_help():
     """Print input help prompt"""
-    print("\n\n\n\n\n    type h to help\n  -=-=-=- new input -=-=-=-")
+    print(f"\n\n\n\n\n{C.WHITE}type h to help \n-=-=-=- new input -=-=-=-{C.RESET}")
 
 
 def print_input(current_input, input_buffer, preset_index=None, preset_name=None):
@@ -141,48 +162,48 @@ def print_input(current_input, input_buffer, preset_index=None, preset_name=None
         return
     
     if current_input == "r":
-        print("enter:    [b] - birth,  [s] - survival,  [p] - preset\n\n  =>  Rule:    ", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[b]{C.RESET} - birth,  {C.WHITE}[s]{C.RESET} - survival,  {C.WHITE}[p]{C.RESET} - preset\n\n{C.INP}=>  Rule:    {C.RESET}", end="")
     elif current_input == "r b":
-        print("enter:    [number] - toggle\n\n  =>  Rule:  Birth:    ", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[number]{C.RESET} - toggle\n\n{C.INP}=>  Rule:  ", end="")
         print_rule_b()
     elif current_input == "r s":
-        print("enter:    [number] - toggle\n\n  => Rule:  Survival:    ", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[number]{C.RESET} - toggle\n\n{C.INP}=> Rule:  ", end="")
         print_rule_s()
     elif current_input == "r p":
-        print(f"enter:    [number] - select,  [n] - next,  [p] - prev\n\n  =>  Rule:  Preset:    {input_buffer}", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[number]{C.RESET} - select,  {C.WHITE}[n]{C.RESET} - next,  {C.WHITE}[p]{C.RESET} - prev\n\n{C.INP}=>  Rule:  Preset:    {input_buffer}{C.RESET}", end="")
     elif current_input == "s":
-        print("enter:    [f] - FPS,  [z] - cell size,  [d] - density,  [u] - ui hide/show,  [r] - render mode\n\n  =>  Settings:    \n", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[f]{C.RESET} - FPS,  {C.WHITE}[z]{C.RESET} - cell size,  {C.WHITE}[d]{C.RESET} - density,  {C.WHITE}[u]{C.RESET} - ui hide/show,  {C.WHITE}[r]{C.RESET} - render mode\n\n{C.INP}=>  Settings:    {C.RESET}\n", end="")
     elif current_input == "s r":
-        print("enter:    [a] - set render mode for active,  [n] - set render mode for non active(не работает),  \n\n  =>  Settings:  Render Mode:    \n", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[a]{C.RESET} - set render mode for active,  {C.WHITE}[n]{C.RESET} - set render mode for non active,  \n\n{C.INP}=>  Settings:  Render Mode:    {C.RESET}\n", end="")
     elif current_input == "s r a":
-        print("enter:    [number]  -   select Render Mode,  \n\n  =>  Settings:  Render Mode:  Active:    \n", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[number]{C.RESET}  -   select Render Mode,  \n\n{C.INP}=>  Settings:  Render Mode:  Active:    {C.RESET}\n", end="")
     elif current_input == "s r n":
-        print("enter:    [number]  -   select Render Mode,  \n\n  =>  Settings:  Render Mode:  Non Active:    \n", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[number]{C.RESET}  -   select Render Mode,  \n\n{C.INP}=>  Settings:  Render Mode:  Non Active:    {C.RESET}\n", end="")
     elif current_input == "s f":
-        print(f"enter:    [number] - set\n\n  =>  Settings:  FPS Limit:    {input_buffer} ", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[number]{C.RESET} - set\n\n{C.INP}=>  Settings:  FPS Limit:    {input_buffer} {C.RESET}", end="")
     elif current_input == "s z":
-        print(f"enter:    [number] - set\n\n  =>  Settings:  Cell Size:    {input_buffer} ", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[number]{C.RESET} - set\n\n{C.INP}=>  Settings:  Cell Size:    {input_buffer} {C.RESET}", end="")
     elif current_input == "s d":
-        print(f"enter:    [number] - set\n\n  =>  Settings:  Density Of Spawn:    {input_buffer} ", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[number]{C.RESET} - set\n\n{C.INP}=>  Settings:  Density Of Spawn:    {input_buffer} {C.RESET}", end="")
     elif current_input == "p":
-        print(f"enter:    [ENTER] - Apply;   Options: [number] - Set Type,  [s] - Set Size,  [v] - Second Value\n\n  =>  Patterns:    {input_buffer}", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[ENTER]{C.RESET} - Apply;   Options: {C.WHITE}[number]{C.RESET} - Set Type,  {C.WHITE}[s]{C.RESET} - Set Size,  {C.WHITE}[v]{C.RESET} - Second Value\n\n{C.INP}=>  Patterns:    {input_buffer}{C.RESET}", end="")
     elif current_input == "p s":
-        print(f"enter:    [number] - Set Size Of Patterns\n\n  =>  Patterns:  Size:    {input_buffer}", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[number]{C.RESET} - Set Size Of Patterns\n\n{C.INP}=>  Patterns:  Size:    {input_buffer}{C.RESET}", end="")
     elif current_input == "p v":
-        print(f"enter:    [number] - Set Second Patterns Value\n\n  =>  Patterns:  Second Value:    {input_buffer}", end="")
+        print(f"{C.INPUT}enter:{C.RESET}    {C.WHITE}[number]{C.RESET} - Set Second Patterns Value\n\n{C.INP}=>  Patterns:  Second Value:    {input_buffer}{C.RESET}", end="")
     print()
 
 
 def print_message(message):
     """Print general message"""
-    print(f"\n   >>   {message}")
+    print(f"\n{C.INPUT}>>{C.RESET}   {message}")
 
 
 def print_error(message):
     """Print error message"""
-    print(f"\n   >>   Error: {message}")
+    print(f"\n{C.ERROR}>>   Error:{C.RESET} {message}")
 
 
 def print_preset_info(preset_index, preset_name, action="Selected"):
     """Print preset information"""
-    print(f"\n   >>   {action} preset:  ({preset_index}) {preset_name}")
+    print(f"\n{C.INPUT}>>{C.RESET}   {action} preset:  ({preset_index}) {preset_name}")

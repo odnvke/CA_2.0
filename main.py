@@ -1,6 +1,8 @@
 # main.py
 import pyglet
 from pyglet.gl import *
+import os
+import sys
 
 # Импорт модулей
 from statistics import update_fps, should_update_ui, set_timing, start_frame, end_frame, get_stats, start_timing, end_timing, get_avg_timing
@@ -14,6 +16,11 @@ from rules import RuleManager  # Изменено с rule_manager на RuleManag
 
 # Глобальные переменные приложения
 window = None
+
+
+# Включаем поддержку ANSI цветов в Windows
+if sys.platform == "win32":
+    os.system("color")
 
 def create_grid():
     """Create grid based on current settings"""
