@@ -25,7 +25,11 @@ class ResultProcessor:
             AppState.force_redraw = True
             self.callbacks['random_grid'](AppState.random_density)
             return True
-            
+
+        elif result_type == 'pattern_apply' and 'create_pattern' in self.callbacks:
+            self.callbacks['create_pattern'](4)  # 4 - параметр для create_pattern
+            return True
+
         elif result_type == 'clear' and 'clear_grid' in self.callbacks:
             AppState.force_redraw = True
             self.callbacks['clear_grid']()

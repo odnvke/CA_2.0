@@ -49,6 +49,9 @@ class Command:
 
 # Глобальные команды (работают всегда)
 GLOBAL_COMMANDS = [
+    Command(_KEY.P, modifiers=_KEY.MOD_CTRL,
+        handler=lambda: ('pattern_apply', {})),
+    
     # CTRL+R - случайная сетка
     Command(_KEY.R, modifiers=_KEY.MOD_CTRL, 
             handler=lambda: ('reset', {'force_redraw': True})),
