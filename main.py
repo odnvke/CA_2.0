@@ -152,7 +152,7 @@ def update(dt):
     if should_update_grid:
         grid_start = start_timing()
         update_grid_ultra_fast(RuleManager.is_updated(),  
-                              AppState.render_mode_active, AppState.render_mode_inactive)
+                        mode1=AppState.render_mode_active, mode2=AppState.render_mode_inactive)
         set_timing('grid', end_timing(grid_start))
         AppState.single_step = False
 

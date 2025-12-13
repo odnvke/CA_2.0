@@ -85,10 +85,10 @@ class InputManager:
     def _process_numeric_result(self, result, num):
         """Обрабатывает результат числового ввода"""
         if result == 'mode1':
-            AppState.render_mode_active = max(min(num, 5), 0)
+            AppState.render_mode_active = num
             return self.result_processor.process('mode1', {})
         elif result == 'mode2':
-            AppState.render_mode_inactive = max(min(num, 1), 0)
+            AppState.render_mode_inactive = num
             return self.result_processor.process('mode2', {})
         return True
 

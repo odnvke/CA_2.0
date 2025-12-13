@@ -53,14 +53,15 @@ class NumericHandler:
 
             # Render modes
             elif AppState.current_input == "s r a":
-                AppState.render_mode_active = max(min(num, 5), 0)
+                AppState.render_mode_active = max(min(num, 6), 0)
                 print_help()
                 print_input(AppState.current_input, AppState.input_buffer)
                 print_message(f"set render mode for active:{AppState.render_mode_active}")
                 return "mode1"
 
             elif AppState.current_input == "s r n":
-                AppState.render_mode_inactive = max(min(num, 1), 0)
+                AppState.render_mode_inactive = max(min(num, 2), 0)
+                
                 print_help()
                 print_input(AppState.current_input, AppState.input_buffer)
                 print_message(f"set render mode for non active:{AppState.render_mode_inactive}")

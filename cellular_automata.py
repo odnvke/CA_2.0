@@ -46,7 +46,6 @@ def init_grid(width, height, mode1=0, mode2=0):
 
 def update_grid_ultra_fast(is_update_rule=False, mode1=0, mode2=0, is_calc=True, new_grid_isnotcalc=None):
     global grid, generation, grid_infor, prev_mode1, rule_b, rule_s
-
     if is_update_rule:
         # Получаем правила из RuleManager
         rule_b, rule_s = RuleManager.get_rules_binary()  # Изменено
@@ -91,8 +90,8 @@ def update_grid_ultra_fast(is_update_rule=False, mode1=0, mode2=0, is_calc=True,
             #s
             born_cells = (grid == 0) & (new_grid == 1)
             grid_infor[:, (grid_infor[0, :] == 0) & alive_cells] = 0
-            grid_infor[:, (grid_infor[1, :] < 150)] = np.add(grid_infor[:, (grid_infor[1, :] < 150)], 5)
-            grid_infor[:, (grid_infor[1, :] >= 150)] = np.add(np.clip(grid_infor[:, (grid_infor[1, :] >= 150)], 0, 254), 1)
+            grid_infor[:, (grid_infor[1, :] < 150) & new_grid==1] = np.add(grid_infor[:, (grid_infor[1, :] < 150) & new_grid==1], 5)
+            grid_infor[:, (grid_infor[1, :] >= 150) & new_grid==1] = np.add(np.clip(grid_infor[:, (grid_infor[1, :] >= 150) & new_grid==1], 0, 254), 1)
             
             #b
             grid_infor[0, born_cells] = 0
@@ -125,12 +124,37 @@ def update_grid_ultra_fast(is_update_rule=False, mode1=0, mode2=0, is_calc=True,
             np.roll(new_grid, -1, 0) +
             np.roll(np.roll(new_grid, -1, 0), 1, 1)
             )
-            grid_infor[0, new_grid==1] = np.multiply(np.remainder(new_neighbors[new_grid==1], 2), 100) + 100
-            grid_infor[1, new_grid==1] = np.multiply(np.remainder(new_neighbors[new_grid==1], 4), 40) + 30
+            grid_infor[0, new_grid==1] = np.multiply(np.remainder(new_neighbors[new_grid==1], 2), 120) + 100
+            grid_infor[1, new_grid==1] = np.multiply(np.remainder(new_neighbors[new_grid==1], 3), 75) + 50
             grid_infor[2, new_grid==1] = new_neighbors[new_grid==1]*30+10
 
-        if mode2 == 0 and grid_infor is not None:
-            grid_infor[:, new_grid==0] = 0
+        elif mode1 == 6:
+            neighbors = (
+            np.roll(np.roll(grid, 1, 0), 1, 1) +
+            np.roll(grid, 1, 0) +
+            np.roll(np.roll(grid, 1, 0), -1, 1) +
+            np.roll(grid, -1, 1) +
+            np.roll(grid, 1, 1) +
+            np.roll(np.roll(grid, -1, 0), -1, 1) +
+            np.roll(grid, -1, 0) +
+            np.roll(np.roll(grid, -1, 0), 1, 1)
+            )
+            grid_infor[0, new_grid==1] = np.multiply(np.remainder(neighbors[new_grid==1], 2), 120) + 100
+            grid_infor[1, new_grid==1] = np.multiply(np.remainder(neighbors[new_grid==1], 3), 75) + 55
+            grid_infor[2, new_grid==1] = neighbors[new_grid==1]*30+10
+
+        #print(mode2)
+    if mode2 == 0 and grid_infor is not None:
+        grid_infor[:, new_grid==0] = 0
+    elif mode2 == 1:
+        grid_infor[:, ((grid==1) & (new_grid==0))] = 0
+        grid_infor[0, ((grid==1) & (new_grid==0))] = 70
+        grid_infor[:, ((grid==0) & (new_grid==0))] = 0
+    elif mode2 == 2:
+        grid_infor[1, (new_grid==0)] = 0
+        grid_infor[2, (new_grid==0)] = 0
+        grid_infor[0, ((grid==1) & (new_grid==0))] = 40
+        grid_infor[0, ((grid==0) & (new_grid==0))] = np.subtract(np.clip(grid_infor[0, ((grid==0) & (new_grid==0))], 2, 255), 1)
 
     if mode1 == 0 and mode2 == 0:
         if is_calc:
