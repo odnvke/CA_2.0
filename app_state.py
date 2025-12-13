@@ -6,6 +6,7 @@
 
 class AppState:
     # Основные настройки
+    lock_window = False
     target_fps = 20
     vsync_enabled = False
     cell_size =3

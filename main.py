@@ -12,11 +12,11 @@ from cellular_automata import init_grid, update_grid_ultra_fast, clear_grid, ran
 from renderer import draw_grid, cleanup_texture
 from ui_manager import init_ui, update_ui, draw_ui
 from app_state import AppState
-from rules import RuleManager  # Изменено с rule_manager на RuleManager
+from rules import RuleManager
+from config_manager import load_config, apply_config, save_config, reset_to_defaults  # Добавлен импорт
 
 # Глобальные переменные приложения
 window = None
-
 
 # Включаем поддержку ANSI цветов в Windows
 if sys.platform == "win32":
@@ -36,12 +36,16 @@ def init_app():
     """Инициализация приложения"""
     global window
     
+    # Загрузка конфигурации перед созданием окна
+    config = load_config()
+    apply_config(config)
+    
     config = pyglet.gl.Config(double_buffer=True)
     window = pyglet.window.Window(
         AppState.window_width,
         AppState.window_height,
-        "Ultra Fast Cellular Automata", 
-        resizable=True, config=config
+        "Cellular Automata", 
+        resizable=AppState.lock_window, config=config
     )
 
     AppState.init_window(window)
@@ -66,6 +70,14 @@ def init_app():
     }
     init_callbacks(callbacks)
     
+    # Добавляем обработчик для сохранения настроек при выходе
+    @window.event
+    def on_close():
+        print("Сохранение настроек перед выходом...")
+        save_config()
+        window.close()
+        return pyglet.event.EVENT_HANDLED
+    
     window.push_handlers(
         on_draw=on_draw,
         on_resize=on_resize,
@@ -74,7 +86,7 @@ def init_app():
     )
 
     update_fps_settings()
-    window.set_vsync(False)
+    window.set_vsync(AppState.vsync_enabled)
 
 def on_expose():
     """Восстанавливаем настройки при обновлении контекста OpenGL"""
@@ -163,6 +175,8 @@ def main():
     try:
         pyglet.app.run()
     except KeyboardInterrupt:
+        print("Сохранение настроек перед выходом...")
+        save_config()
         print("Application interrupted")
     finally:
         cleanup_texture()
