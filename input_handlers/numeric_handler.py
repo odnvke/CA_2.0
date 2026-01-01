@@ -23,7 +23,7 @@ class NumericHandler:
     def __init__(self, callbacks=None):
         self.callbacks = callbacks or {}
     
-    def process(self, symbol):
+    def process(self, symbol, _shift=False, is_comma=False):
         """ТОЧНАЯ копия оригинального process_numeric_input()"""
         if symbol in _NUMBERS:
             num = _NUMBERS.index(symbol)

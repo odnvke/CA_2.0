@@ -7,9 +7,9 @@
   "simulation": {
     "target_fps": 20,
     "vsync_enabled": false,
-    "cell_size": 3,
+    "cell_size": 1.0,
     "random_density": 30,
-    "preset_index": 1
+    "preset_index": 14
   },
   "rendering": {
     "render_mode_active": 5,
@@ -17,7 +17,7 @@
     "ui_visible": true
   },
   "patterns": {
-    "patterns_type": 1,
+    "patterns_type": 9,
     "patterns_size": 3.0,
     "patterns_second_value": 1.0
   }

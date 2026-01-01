@@ -26,6 +26,10 @@ class InputManager:
             _KEY._0, _KEY._1, _KEY._2, _KEY._3, _KEY._4,
             _KEY._5, _KEY._6, _KEY._7, _KEY._8, _KEY._9
         ]
+        self.is_search = False
+        self.is_input_value = False
+        self.input_value_type = -1
+        self.str_in_dict = -1
     
     def set_callbacks(self, callbacks):
         """Устанавливает callback-функции"""
@@ -53,22 +57,12 @@ class InputManager:
         # Обработка числового ввода
         if symbol in self.num_key_symbols:
             num = self.num_key_symbols.index(symbol)
-            result = self.numeric_handler.process(symbol)
-            if result is not None:
-                return self._process_numeric_result(result, num)
-        
-        elif symbol == _KEY.PERIOD:
-            result = self.numeric_handler.process(symbol)
-            if result is not None:
-                return True
-        
+            result = self.numeric_handler.process(symbol, _shift=modifiers == _KEY.MOD_SHIFT)
+        if symbol == _KEY.COMMA:
+            result = self.numeric_handler.process(is_comma=True, _shift=modifiers == _KEY.MOD_SHIFT)
+
         # Поиск и выполнение подходящей команды
-        for command in self.commands:
-            if command.matches(symbol, modifiers, current_input):
-                result = command.execute()
-                if result:
-                    result_type, data = result
-                    return self.result_processor.process(result_type, data)
+        
         
         return False
     
@@ -82,16 +76,6 @@ class InputManager:
             return self.result_processor.process('pattern_apply', {})
         return True
     
-    def _process_numeric_result(self, result, num):
-        """Обрабатывает результат числового ввода"""
-        if result == 'mode1':
-            AppState.render_mode_active = num
-            return self.result_processor.process('mode1', {})
-        elif result == 'mode2':
-            AppState.render_mode_inactive = num
-            return self.result_processor.process('mode2', {})
-        return True
-
 
 # ======================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ========================
 
