@@ -17,17 +17,13 @@ DEFAULT_CONFIG = {
         "vsync_enabled": False,
         "cell_size": 3,
         "random_density": 30,
-        "preset_index": 1
+        "preset_index": 1  # Добавлено обратно для совместимости
     },
     "rendering": {
         "render_mode_active": 5,
         "render_mode_inactive": 0,
-        "ui_visible": True
-    },
-    "patterns": {
-        "patterns_type": 1,
-        "patterns_size": 11.0,
-        "patterns_second_value": 1.0
+        "ui_visible": True,
+        "show_fps": True  # Добавлен новый параметр
     }
 }
 
@@ -80,17 +76,13 @@ def get_current_config() -> Dict[str, Any]:
             "vsync_enabled": AppState.vsync_enabled,
             "cell_size": AppState.cell_size,
             "random_density": AppState.random_density,
-            "preset_index": AppState.preset_index
+            "preset_index": AppState.preset_index if hasattr(AppState, 'preset_index') else 1
         },
         "rendering": {
             "render_mode_active": AppState.render_mode_active,
             "render_mode_inactive": AppState.render_mode_inactive,
-            "ui_visible": AppState.ui_visible
-        },
-        "patterns": {
-            "patterns_type": AppState.patterns_type,
-            "patterns_size": AppState.patterns_size,
-            "patterns_second_value": AppState.patterns_second_value
+            "ui_visible": AppState.ui_visible,
+            "show_fps": AppState.show_fps if hasattr(AppState, 'show_fps') else True
         }
     }
 
@@ -108,10 +100,12 @@ def apply_config(config: Dict[str, Any]) -> None:
         AppState.vsync_enabled = sim_config.get("vsync_enabled", DEFAULT_CONFIG["simulation"]["vsync_enabled"])
         AppState.cell_size = sim_config.get("cell_size", DEFAULT_CONFIG["simulation"]["cell_size"])
         AppState.random_density = sim_config.get("random_density", DEFAULT_CONFIG["simulation"]["random_density"])
-        AppState.preset_index = sim_config.get("preset_index", DEFAULT_CONFIG["simulation"]["preset_index"])
         
-        # Загружаем пресет правил
-        RuleManager.load_preset(AppState.preset_index)
+        # preset_index может отсутствовать в старых конфигах
+        if hasattr(AppState, 'preset_index'):
+            AppState.preset_index = sim_config.get("preset_index", DEFAULT_CONFIG["simulation"]["preset_index"])
+            # Загружаем пресет правил, если он есть
+            RuleManager.load_preset(AppState.preset_index)
         
         # Настройки рендеринга
         render_config = config.get("rendering", {})
@@ -119,21 +113,50 @@ def apply_config(config: Dict[str, Any]) -> None:
         AppState.render_mode_inactive = render_config.get("render_mode_inactive", DEFAULT_CONFIG["rendering"]["render_mode_inactive"])
         AppState.ui_visible = render_config.get("ui_visible", DEFAULT_CONFIG["rendering"]["ui_visible"])
         
-        # Настройки паттернов
-        patterns_config = config.get("patterns", {})
-        AppState.patterns_type = patterns_config.get("patterns_type", DEFAULT_CONFIG["patterns"]["patterns_type"])
-        AppState.patterns_size = patterns_config.get("patterns_size", DEFAULT_CONFIG["patterns"]["patterns_size"])
-        AppState.patterns_second_value = patterns_config.get("patterns_second_value", DEFAULT_CONFIG["patterns"]["patterns_second_value"])
+        # Новая настройка для показа FPS
+        if hasattr(AppState, 'show_fps'):
+            AppState.show_fps = render_config.get("show_fps", DEFAULT_CONFIG["rendering"]["show_fps"])
         
         print("Конфигурация успешно применена")
         
     except Exception as e:
         print(f"Ошибка применения конфигурации: {e}")
         print("Используются настройки по умолчанию")
-        apply_config(DEFAULT_CONFIG)
+        # ВАЖНО: предотвращаем рекурсию
+        reset_to_defaults_no_recursion()
+
+def reset_to_defaults_no_recursion():
+    """Сбросить настройки к значениям по умолчанию без рекурсии"""
+    try:
+        # Применяем значения напрямую
+        AppState.window_width = DEFAULT_CONFIG["window"]["width"]
+        AppState.window_height = DEFAULT_CONFIG["window"]["height"]
+        AppState.lock_window = DEFAULT_CONFIG["window"]["resizeble"]
+        
+        AppState.target_fps = DEFAULT_CONFIG["simulation"]["target_fps"]
+        AppState.vsync_enabled = DEFAULT_CONFIG["simulation"]["vsync_enabled"]
+        AppState.cell_size = DEFAULT_CONFIG["simulation"]["cell_size"]
+        AppState.random_density = DEFAULT_CONFIG["simulation"]["random_density"]
+        
+        if hasattr(AppState, 'preset_index'):
+            AppState.preset_index = DEFAULT_CONFIG["simulation"]["preset_index"]
+            RuleManager.load_preset(AppState.preset_index)
+        
+        AppState.render_mode_active = DEFAULT_CONFIG["rendering"]["render_mode_active"]
+        AppState.render_mode_inactive = DEFAULT_CONFIG["rendering"]["render_mode_inactive"]
+        AppState.ui_visible = DEFAULT_CONFIG["rendering"]["ui_visible"]
+        
+        if hasattr(AppState, 'show_fps'):
+            AppState.show_fps = DEFAULT_CONFIG["rendering"]["show_fps"]
+        
+        print("Настройки сброшены к значениям по умолчанию")
+        
+        # Сохраняем только если файл существует
+        save_config(DEFAULT_CONFIG)
+        
+    except Exception as e:
+        print(f"Ошибка сброса настроек: {e}")
 
 def reset_to_defaults() -> None:
     """Сбросить настройки к значениям по умолчанию"""
-    apply_config(DEFAULT_CONFIG)
-    save_config(DEFAULT_CONFIG)
-    print("Настройки сброшены к значениям по умолчанию")
+    reset_to_defaults_no_recursion()

@@ -5,7 +5,7 @@
     "resizeble": true
   },
   "simulation": {
-    "target_fps": 20,
+    "target_fps": 1,
     "vsync_enabled": false,
     "cell_size": 3,
     "random_density": 30,
@@ -14,11 +14,7 @@
   "rendering": {
     "render_mode_active": 5,
     "render_mode_inactive": 0,
-    "ui_visible": true
-  },
-  "patterns": {
-    "patterns_type": 1,
-    "patterns_size": 3.0,
-    "patterns_second_value": 1.0
+    "ui_visible": true,
+    "show_fps": true
   }
 }
